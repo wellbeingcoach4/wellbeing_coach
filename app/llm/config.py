@@ -27,7 +27,7 @@ def _get_env(*names, default: str = "") -> str:
     """Return the first existing environment variable from names, stripped.
 
     This helper allows using alternate variable names (e.g. LOCAL_BASE_URL
-    or OLLAMA_BASE_URL) and strips accidental whitespace from values.
+    or LOCAL_BASE_URL) and strips accidental whitespace from values.
     """
     for name in names:
         val = os.getenv(name)
@@ -47,7 +47,7 @@ class OllamaConfig(BaseModel):
     """Configuration for Ollama"""
     base_url: str
     model: str
-    timeout: int = 30
+    timeout: int = 180
 
 
 class GroqConfig(BaseModel):
@@ -79,9 +79,9 @@ class LLMConfig:
 
         # Provider Configurations (support alternate env names like LOCAL_...)
         self.ollama = OllamaConfig(
-            base_url=_get_env("OLLAMA_BASE_URL", "LOCAL_BASE_URL", default="http://localhost:11434"),
-            model=_get_env("OLLAMA_MODEL", "LOCAL_MODEL", default="llama3.1:8b"),
-            timeout=int(_get_env("OLLAMA_TIMEOUT", default="30"))
+            base_url=_get_env("LOCAL_BASE_URL", "LOCAL_BASE_URL", default="http://localhost:11434"),
+            model=_get_env("LOCAL_MODEL", "LOCAL_MODEL", default="llama3.1:8b"),
+            timeout=int(_get_env("OLLAMA_TIMEOUT", default="180"))
         )
 
         self.groq = GroqConfig(
@@ -93,7 +93,7 @@ class LLMConfig:
 
         self.gemini = GeminiConfig(
             api_key=_get_env("GEMINI_API_KEY", default=""),
-            base_url=_get_env("GEMINI_BASE_URL", default="https://generativelanguage.googleapis.com/v1beta"),
+            base_url=_get_env("GEMINI_BASE_URL", default="https://generativelanguage.googleapis.com/v1beta/openai"),
             model=_get_env("GEMINI_MODEL", default="gemini-2.5-flash"),
             timeout=int(_get_env("GEMINI_TIMEOUT", default="30"))
         )

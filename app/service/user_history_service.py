@@ -350,10 +350,15 @@ class UserHistoryService:
         try:
             async with httpx.AsyncClient(timeout=config.timeout) as client:
                 if provider == LLMProvider.OLLAMA:
-                    url = f"{config.base_url}/api/generate"
+                    url = f"{config.base_url}/chat/completions"
                     payload = {
                         "model": config.model,
-                        "prompt": prompt,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
                         "stream": False
                     }
                     response = await client.post(url, json=payload)
@@ -392,7 +397,7 @@ class UserHistoryService:
                 result = response.json()
 
                 if provider == LLMProvider.OLLAMA:
-                    return result.get("response", "")
+                    return result["choices"][0]["message"]["content"]
                 if provider == LLMProvider.GROQ:
                     return result["choices"][0]["message"]["content"]
                 if provider == LLMProvider.GEMINI:

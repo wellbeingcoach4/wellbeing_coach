@@ -14,6 +14,7 @@ from app.database import repository as db_repository
 logger = logging.getLogger(__name__)
 
 # Mood analysis prompt
+#technique for the prompt used below
 MOOD_ANALYSIS_PROMPT = """Analyze the mood and emotional state from the following text. 
 Respond ONLY with valid JSON (no markdown, no extra text) in this exact format:
 {{
@@ -123,18 +124,23 @@ class MoodAnalyzerService:
             
             async with httpx.AsyncClient(timeout=config.timeout) as client:
                 response = await client.post(
-                    f"{config.base_url}/api/generate",
+                    f"{config.base_url}/chat/completions",
                     json={
-                        "model": config.model,
-                        "prompt": prompt,
-                        "stream": False,
-                    },
+                    "model": config.model,   # e.g. "llama3.1:8b"
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "stream": False
+                },
                     timeout=config.timeout
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    response_text = data.get("response", "").strip()
+                    response_text = data["choices"][0]["message"]["content"]
                     
                     # Parse JSON response
                     parsed = self._parse_llm_response(response_text)

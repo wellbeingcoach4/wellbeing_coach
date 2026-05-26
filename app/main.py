@@ -57,6 +57,11 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "ok", "service": "wellbeing-coach"}
 
+# python -m app.main command allows running this file as a module, 
+# which is important for relative imports to work correctly. 
+# It tells Python to treat the current directory as a package and run the main.py 
+# file within that context. This way, all the imports in main.py that reference other 
+# modules in the app package will work correctly.
 
 if __name__ == "__main__":
     import uvicorn

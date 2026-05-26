@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from pydantic import Field
 
 class MoodRequest(BaseModel):
-    user_id: str = Field(..., min_length=1, pattern=r"^[a-zA-Z0-9_-]+$", description="Unique identifier for the user") 
-    text: str = Field(..., min_length=1, description="The text to analyze for mood")
+    user_id: str = Field(..., min_length=1,max_length=6, pattern=r"^[a-zA-Z0-9_-]+$", description="Unique identifier for the user") 
+    text: str = Field(..., min_length=1,max_length=1000, description="The text to analyze for mood")
 
 
 class MoodResponse(BaseModel):

@@ -494,10 +494,15 @@ class WellbeingService:
         ) as client:
 
             response = await client.post(
-                f"{config.base_url}/api/generate",
+                f"{config.base_url}/chat/completions",
                 json={
                     "model": config.model,
-                    "prompt": prompt,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
                     "stream": False
                 }
             )
@@ -514,7 +519,7 @@ class WellbeingService:
 
             data = response.json()
 
-            response_text = data["response"]
+            response_text = data["choices"][0]["message"]["content"]
 
             return self._parse_response(
                 response_text
