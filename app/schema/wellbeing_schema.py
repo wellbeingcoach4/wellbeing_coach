@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class WellbeingActivityResponse(BaseModel):
@@ -14,45 +14,34 @@ class WellbeingActivityResponse(BaseModel):
 
 class WellbeingActivitiesListResponse(BaseModel):
 
-    activities: List[
-        WellbeingActivityResponse
-    ]
+    activities: List[WellbeingActivityResponse]
 
 
-class ActivitySelectionRequest(
-    BaseModel
-):
+class ActivitySelectionRequest(BaseModel):
 
-    user_id: str = Field(
-        ...,
-        min_length=1
-    )
+    user_id: str = Field(...,min_length=1, pattern=r"^[a-zA-Z0-9_-]+$", description="Unique identifier for the user")
 
     activity_id: int
 
-    available_time_minutes: Optional[int] = (
-        None
-    )
+    available_time_minutes: Optional[int] = Field(None, description="Available time in minutes for the activity")
 
     mood: Optional[str] = None
     
-    user_reason_for_mood: Optional[str] = Field(
-        None,
-        max_length=500,
-        description="User's reason for their current mood"
-    )
+    user_reason_for_mood: Optional[str] = Field(None,max_length=500,description="User's reason for their current mood")
     
-    custom_activity: Optional[str] = Field(
-        None,
-        min_length=3,
-        max_length=255,
-        description="Custom activity provided by user if not selecting from suggestions"
-    )
+    custom_activity: Optional[str] = Field(None,min_length=3,max_length=255,description="Custom activity provided by user if not selecting from suggestions")
 
+    @model_validator(mode="after")
+    def validate_custom_activity_with_zero_id(self):
 
-class SessionPlanResponse(
-    BaseModel
-):
+        if self.activity_id == 0 and not self.custom_activity:
+            raise ValueError(
+                "activity_id 0 requires custom_activity"
+            )
+
+        return self
+    
+class SessionPlanResponse(BaseModel):
 
     session_title: str
 
@@ -65,9 +54,7 @@ class SessionPlanResponse(
     mood_addressed: Optional[str] = None
 
 
-class ActivitySelectionResponse(
-    BaseModel
-):
+class ActivitySelectionResponse(BaseModel):
 
     message: str
 
@@ -75,8 +62,6 @@ class ActivitySelectionResponse(
 
     available_time_minutes: Optional[int]
 
-    session_plan: (
-        SessionPlanResponse
-    )
+    session_plan: (SessionPlanResponse)
 
     database_id: int

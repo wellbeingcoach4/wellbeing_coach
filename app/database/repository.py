@@ -67,7 +67,9 @@ def save_user_activity_selection(
     ai_session_title,
     ai_session_steps,
     ai_estimated_duration,
-    llm_provider
+    llm_provider,
+    user_reason_for_mood=None,
+    custom_activity=None
 ):
     try:
 
@@ -87,7 +89,9 @@ def save_user_activity_selection(
 
         ai_estimated_duration=ai_estimated_duration,
 
-        llm_provider=llm_provider
+        llm_provider=llm_provider,
+        user_reason_for_mood=user_reason_for_mood,
+        custom_activity=custom_activity
         )
 
         db.add(record)

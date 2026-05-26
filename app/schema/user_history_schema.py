@@ -89,6 +89,7 @@ class PeriodicMoodResponse(BaseModel):
     user_id: str = Field(..., description="User identifier")
     from_date: datetime = Field(..., description="Start date of the period (inclusive)")
     to_date: datetime = Field(..., description="End date of the period (inclusive)")
+    llm_provider: str = Field(..., description="LLM provider used for analysis")
     moods_in_period: List[PeriodicMoodItem] = Field(default=[], description="List of moods in the specified period")
     mood_statistics: MoodStatistics = Field(..., description="Statistical summary of moods")
     period_analysis: str = Field(..., description="Overall analysis of user's mood during the period")

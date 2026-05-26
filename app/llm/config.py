@@ -94,7 +94,7 @@ class LLMConfig:
         self.gemini = GeminiConfig(
             api_key=_get_env("GEMINI_API_KEY", default=""),
             base_url=_get_env("GEMINI_BASE_URL", default="https://generativelanguage.googleapis.com/v1beta"),
-            model=_get_env("GEMINI_MODEL", default="gemini-1.5-flash"),
+            model=_get_env("GEMINI_MODEL", default="gemini-2.5-flash"),
             timeout=int(_get_env("GEMINI_TIMEOUT", default="30"))
         )
 

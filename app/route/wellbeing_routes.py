@@ -45,7 +45,9 @@ async def select_activity(
             user_id=request.user_id,
             activity_id=request.activity_id,
             available_time_minutes=request.available_time_minutes,
-            mood=request.mood
+            mood=request.mood,
+            user_reason_for_mood=getattr(request, 'user_reason_for_mood', None),
+            custom_activity=getattr(request, 'custom_activity', None)
         )
 
     except ValueError as e:

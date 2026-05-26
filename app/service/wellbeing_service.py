@@ -21,6 +21,12 @@ Generate a personalized wellbeing session for the user based on their current em
 User's Current Mood:
 {mood}
 
+User's Reason For Mood:
+{user_reason}
+
+Custom Activity Provided (if any):
+{custom_activity}
+
 Activity Selected:
 {activity_name}
 
@@ -32,6 +38,7 @@ Instructions:
 - If mood is anxious: include calming, grounding techniques
 - If mood is sad: include uplifting, motivational elements
 - If mood is stressed: include stress-relief techniques
+- If a custom activity is provided, use it as the selected activity and center the session around that custom choice
 - Keep the response practical and actionable
 - Keep it concise and appropriate for their emotional state
 - Adjust suggestions based on available time
@@ -78,30 +85,40 @@ class WellbeingService:
         user_id: str,
         activity_id: int,
         available_time_minutes: Optional[int],
-        mood: Optional[str] = None
+        mood: Optional[str] = None,
+        user_reason_for_mood: Optional[str] = None,
+        custom_activity: Optional[str] = None
     ):
 
-        selected_activity = next(
-            (
-                activity
-                for activity in WELLBEING_ACTIVITIES
-                if activity["activity_id"] == activity_id
-            ),
-            None
-        )
+        if activity_id == 0:
+            if not custom_activity or not custom_activity.strip():
+                raise ValueError("activity_id 0 requires custom_activity")
 
-        if not selected_activity:
-            raise ValueError("Invalid activity_id")
+            activity_name = custom_activity.strip()
+        else:
+            selected_activity = next(
+                (
+                    activity
+                    for activity in WELLBEING_ACTIVITIES
+                    if activity["activity_id"] == activity_id
+                ),
+                None
+            )
 
-        activity_name = (
-            selected_activity["activity_name"]
-        )
+            if not selected_activity:
+                raise ValueError("Invalid activity_id")
+
+            activity_name = (
+                selected_activity["activity_name"]
+            )
 
         # Generate AI Session
         ai_response = await self._generate_session(
             activity_name=activity_name,
             available_time_minutes=available_time_minutes,
-            mood=mood
+            mood=mood,
+            user_reason_for_mood=user_reason_for_mood,
+            custom_activity=custom_activity
         )
 
         # Save to DB
@@ -136,12 +153,13 @@ class WellbeingService:
                         "estimated_duration"
                     )
                 ),
-
                 llm_provider=(
                     ai_response.get(
                         "provider_used"
                     )
-                )
+                ),
+                user_reason_for_mood=user_reason_for_mood,
+                custom_activity=custom_activity
             )
         )
 
@@ -187,7 +205,9 @@ class WellbeingService:
         self,
         activity_name: str,
         available_time_minutes: Optional[int],
-        mood: Optional[str] = None
+        mood: Optional[str] = None,
+        user_reason_for_mood: Optional[str] = None,
+        custom_activity: Optional[str] = None
     ):
 
         # Try Primary Provider
@@ -195,7 +215,9 @@ class WellbeingService:
             provider=self.primary_provider,
             activity_name=activity_name,
             mood=mood,
-            available_time=available_time_minutes
+            available_time=available_time_minutes,
+            user_reason_for_mood=user_reason_for_mood,
+            custom_activity=custom_activity
         )
 
         if result:
@@ -216,7 +238,9 @@ class WellbeingService:
             provider=self.fallback_provider,
             activity_name=activity_name,
             mood=mood,
-            available_time=available_time_minutes
+            available_time=available_time_minutes,
+            user_reason_for_mood=user_reason_for_mood,
+            custom_activity=custom_activity
         )
 
         if result:
@@ -254,7 +278,9 @@ class WellbeingService:
         provider: LLMProvider,
         activity_name: str,
         available_time: Optional[int],
-        mood: Optional[str] = None
+        mood: Optional[str] = None,
+        user_reason_for_mood: Optional[str] = None,
+        custom_activity: Optional[str] = None
     ):
 
         try:
@@ -264,7 +290,9 @@ class WellbeingService:
                 return await self._call_gemini(
                     activity_name=activity_name,
                     available_time=available_time,
-                    mood=mood
+                    mood=mood,
+                    user_reason_for_mood=user_reason_for_mood,
+                    custom_activity=custom_activity
                 )
 
             if provider == LLMProvider.GROQ:
@@ -272,7 +300,9 @@ class WellbeingService:
                 return await self._call_groq(
                     activity_name=activity_name,
                     available_time=available_time,
-                    mood=mood
+                    mood=mood,
+                    user_reason_for_mood=user_reason_for_mood,
+                    custom_activity=custom_activity
                 )
 
             if provider == LLMProvider.OLLAMA:
@@ -280,7 +310,9 @@ class WellbeingService:
                 return await self._call_ollama(
                     activity_name=activity_name,
                     available_time=available_time,
-                    mood=mood
+                    mood=mood,
+                    user_reason_for_mood=user_reason_for_mood,
+                    custom_activity=custom_activity
                 )
 
             return None
@@ -297,13 +329,17 @@ class WellbeingService:
     self,
     activity_name: str,
     available_time: Optional[int],
-    mood: Optional[str] = None
+    mood: Optional[str] = None,
+    user_reason_for_mood: Optional[str] = None,
+    custom_activity: Optional[str] = None
     ):
 
         config = llm_config.gemini
 
         prompt = WELLBEING_SESSION_PROMPT.format(
             mood=mood or "Not specified",
+            user_reason=(user_reason_for_mood or "Not provided"),
+            custom_activity=(custom_activity or "None"),
             activity_name=activity_name,
             available_time=(
                 f"{available_time} minutes"
@@ -367,12 +403,17 @@ class WellbeingService:
         activity_name: str,
         available_time: Optional[int] = None,
         mood: Optional[str] = None
+        ,
+        user_reason_for_mood: Optional[str] = None,
+        custom_activity: Optional[str] = None
     ):
 
         config = llm_config.groq
 
         prompt = WELLBEING_SESSION_PROMPT.format(
             mood=mood or "Not specified",
+            user_reason=(user_reason_for_mood or "Not provided"),
+            custom_activity=(custom_activity or "None"),
             activity_name=activity_name,
             available_time=(
                 f"{available_time} minutes"
@@ -428,13 +469,18 @@ class WellbeingService:
         self,
         activity_name: str,
         mood: Optional[str] = None,
-        available_time: Optional[int] = None
+        available_time: Optional[int] = None,
+        user_reason_for_mood: Optional[str] = None,
+        custom_activity: Optional[str] = None
     ):
 
         config = llm_config.ollama
         mood=mood or "Not specified",
             
         prompt = WELLBEING_SESSION_PROMPT.format(
+            mood=mood or "Not specified",
+            user_reason=(user_reason_for_mood or "Not provided"),
+            custom_activity=(custom_activity or "None"),
             activity_name=activity_name,
             available_time=(
                 f"{available_time} minutes"

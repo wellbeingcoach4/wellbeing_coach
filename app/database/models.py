@@ -50,6 +50,10 @@ class UserActivitySelection(Base):
 
     llm_provider = Column(String)
     
+    user_reason_for_mood = Column(Text, nullable=True)
+
+    custom_activity = Column(String(255), nullable=True)
+    
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 

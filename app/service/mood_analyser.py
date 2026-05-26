@@ -204,18 +204,25 @@ class MoodAnalyzerService:
             
             async with httpx.AsyncClient(timeout=config.timeout) as client:
                 response = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/{config.model}:generateContent",
-                    params={"key": config.api_key},
+                    f"{config.base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {config.api_key}",
+                    "Content-Type": "application/json"},
                     json={
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {"temperature": 0.3},
-                    },
+                    "model": config.model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.3,
+                },
                     timeout=config.timeout
                 )
                 
                 if response.status_code == 200:
                     data = response.json()
-                    response_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    response_text = data["choices"][0]["message"]["content"]
                     
                     # Parse JSON response
                     parsed = self._parse_llm_response(response_text)

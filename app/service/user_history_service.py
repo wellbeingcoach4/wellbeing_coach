@@ -171,7 +171,8 @@ class UserHistoryService:
                 "moods_in_period": moods_in_period,
                 "mood_statistics": mood_statistics,
                 "period_analysis": ai_analysis.get("period_analysis", ""),
-                "recommendation": ai_analysis.get("recommendation", "")
+                "recommendation": ai_analysis.get("recommendation", ""),
+                "llm_provider": ai_analysis.get("llm_provider","unknown")
             }
             
             logger.info(
@@ -268,7 +269,14 @@ class UserHistoryService:
         # Try with primary provider
         try:
             response = await self._call_llm(self.primary_provider, prompt)
-            return self._parse_llm_response(response)
+
+            parsed_response = self._parse_llm_response(response)
+
+            parsed_response["llm_provider"] = (
+                self.primary_provider.value
+            )
+
+            return parsed_response
         except Exception as e:
             logger.warning(
                 f"Primary LLM provider failed for user {user_id}: {str(e)}. "
@@ -278,7 +286,14 @@ class UserHistoryService:
             # Try with fallback provider
             try:
                 response = await self._call_llm(self.fallback_provider, prompt)
-                return self._parse_llm_response(response)
+
+                parsed_response = self._parse_llm_response(response)
+
+                parsed_response["llm_provider"] = (
+                    self.fallback_provider.value
+                )
+
+                return parsed_response
             except Exception as fallback_error:
                 logger.error(
                     f"All LLM providers failed for user {user_id}: {str(fallback_error)}"
@@ -286,7 +301,8 @@ class UserHistoryService:
                 # Return default response if all providers fail
                 return {
                     "period_analysis": "Unable to generate analysis at this time.",
-                    "recommendation": "Please try again later."
+                    "recommendation": "Please try again later.",
+                    "llm_provider": "default"
                 }
 
     def _format_mood_data_for_llm(self, mood_data: List[Dict[str, Any]]) -> str:
@@ -358,14 +374,16 @@ class UserHistoryService:
                 elif provider == LLMProvider.GEMINI:
                     if not config.api_key:
                         raise ValueError("Gemini API key not configured")
-                    url = f"{config.base_url}/models/{config.model}:generateContent"
+                    url = f"{config.base_url}/chat/completions"
                     response = await client.post(
                         url,
-                        params={"key": config.api_key},
+                        headers={"Authorization": f"Bearer {config.api_key}",
+                        "Content-Type": "application/json"},
                         json={
-                            "contents": [{"parts": [{"text": prompt}]}],
-                            "generationConfig": {"temperature": 0.3}
-                        }
+                        "model": config.model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.3
+                    }
                     )
                 else:
                     raise ValueError(f"Unknown LLM provider: {provider}")
@@ -378,7 +396,7 @@ class UserHistoryService:
                 if provider == LLMProvider.GROQ:
                     return result["choices"][0]["message"]["content"]
                 if provider == LLMProvider.GEMINI:
-                    return result["candidates"][0]["content"]["parts"][0]["text"]
+                    return result["choices"][0]["message"]["content"]
 
                 return result.get("content", "")
 
@@ -397,18 +415,41 @@ class UserHistoryService:
             Dictionary with period_analysis and recommendation
         """
         import json
-        
+
         try:
-            # Try to extract JSON from response
+
+            # Remove markdown fences
+            response = (
+                response
+                .replace("```json", "")
+                .replace("```", "")
+                .strip()
+            )
+
             parsed = json.loads(response)
-            
+
             return {
                 "period_analysis": parsed.get("period_analysis", ""),
                 "recommendation": parsed.get("recommendation", "")
             }
-        except json.JSONDecodeError:
-            logger.warning("Failed to parse LLM response as JSON")
+
+        except json.JSONDecodeError as e:
+
+            logger.error(f"JSON parsing failed: {str(e)}")
+            logger.error(f"Invalid JSON response: {response}")
+
             return {
-                "period_analysis": response,
-                "recommendation": "Please review the analysis above."
+                "period_analysis": "Unable to generate analysis.",
+                "recommendation": "Please try again later.",
+                "llm_provider": "unknown"
+            }
+
+        except Exception as e:
+
+            logger.error(f"Unexpected parsing error: {str(e)}")
+
+            return {
+                "period_analysis": "Unable to generate analysis.",
+                "recommendation": "Please try again later.",
+                "llm_provider": "unknown"
             }

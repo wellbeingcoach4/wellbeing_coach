@@ -221,6 +221,7 @@ async def get_periodic_mood(
             user_id=user_id,
             from_date=from_date,
             to_date=to_date,
+            llm_provider=mood_data.get("llm_provider", "unknown"),
             moods_in_period=moods_in_period,
             mood_statistics=mood_stats,
             period_analysis=mood_data.get("period_analysis", ""),
