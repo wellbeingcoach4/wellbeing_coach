@@ -1,3 +1,11 @@
+"""
+Wellbeing Activities Data Module.
+
+Contains predefined wellbeing activities used by the
+Wellbeing Coach application for generating personalized
+mental wellness recommendations and session plans.
+"""
+
 WELLBEING_ACTIVITIES = [
     {
         "activity_id": 1,

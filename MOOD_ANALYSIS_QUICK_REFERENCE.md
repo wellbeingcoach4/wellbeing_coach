@@ -267,3 +267,4 @@ constructive_suggestion TEXT NULL       -- AI-generated suggestion
 - [ ] Test with long text (500+ chars)
 - [ ] Test provider fallback (disconnect primary provider)
 - [ ] Verify database storage of all fields
+

@@ -264,3 +264,4 @@ curl -X POST http://localhost:8000/wellbeing/select-activity \
 ✅ LLM can suggest appropriate coping techniques for the current mood
 ✅ Better user experience with personalized guidance
 ✅ Each mood gets targeted intervention (anxious → grounding, sad → uplifting, etc.)
+

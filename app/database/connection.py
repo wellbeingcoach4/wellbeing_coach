@@ -9,7 +9,7 @@ from app.database.models import Base
 # Database configuration
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:passShubhi@localhost:5432/wellbeing_coach"
+    "postgresql://postgres:Pass1234@localhost:5432/wellbeingcoach"
 ).strip()
 
 # Create database engine

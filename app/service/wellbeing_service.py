@@ -1,3 +1,13 @@
+"""
+Wellbeing Service Module.
+
+This module handles personalized wellbeing session
+generation for the Wellbeing Coach application using
+AI-powered recommendations, emotional analysis,
+wellness activities, and session planning.
+"""
+
+
 import json
 import logging
 from typing import Optional
@@ -326,12 +336,12 @@ class WellbeingService:
             return None
 
     async def _call_gemini(
-    self,
-    activity_name: str,
-    available_time: Optional[int],
-    mood: Optional[str] = None,
-    user_reason_for_mood: Optional[str] = None,
-    custom_activity: Optional[str] = None
+        self,
+        activity_name: str,
+        available_time: Optional[int],
+        mood: Optional[str] = None,
+        user_reason_for_mood: Optional[str] = None,
+        custom_activity: Optional[str] = None
     ):
 
         config = llm_config.gemini
@@ -402,8 +412,7 @@ class WellbeingService:
         self,
         activity_name: str,
         available_time: Optional[int] = None,
-        mood: Optional[str] = None
-        ,
+        mood: Optional[str] = None,
         user_reason_for_mood: Optional[str] = None,
         custom_activity: Optional[str] = None
     ):
@@ -475,8 +484,8 @@ class WellbeingService:
     ):
 
         config = llm_config.ollama
-        mood=mood or "Not specified",
-            
+        mood = mood or "Not specified",
+
         prompt = WELLBEING_SESSION_PROMPT.format(
             mood=mood or "Not specified",
             user_reason=(user_reason_for_mood or "Not provided"),

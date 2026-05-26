@@ -1,3 +1,15 @@
+"""
+Unit tests for Wellbeing Service module.
+
+This test suite validates:
+- wellbeing session generation
+- database interactions
+- validation handling
+- AI response processing
+- service integration logic
+"""
+
+
 import asyncio
 from types import SimpleNamespace
 
@@ -22,7 +34,8 @@ def test_db():
     )
     Base.metadata.create_all(bind=engine)
 
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    TestingSessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=engine)
     db = TestingSessionLocal()
 
     yield db
@@ -80,8 +93,10 @@ def test_activity_selection_zero_id_uses_custom_activity(test_db, monkeypatch):
         assert custom_activity == "Morning yoga flow"
         return SimpleNamespace(id=123)
 
-    monkeypatch.setattr(WellbeingService, "_try_llm_request", mock_try_llm_request)
-    monkeypatch.setattr(repository, "save_user_activity_selection", mock_save_user_activity_selection)
+    monkeypatch.setattr(
+        WellbeingService, "_try_llm_request", mock_try_llm_request)
+    monkeypatch.setattr(repository, "save_user_activity_selection",
+                        mock_save_user_activity_selection)
 
     result = asyncio.run(
         service.select_activity(

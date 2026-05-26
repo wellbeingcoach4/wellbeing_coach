@@ -1,3 +1,10 @@
+"""
+Feedback Schema Module.
+
+Defines request and response validation schemas
+for feedback-related API operations in the
+Wellbeing Coach application.
+"""
 from pydantic import BaseModel, Field
 from typing import Optional
 

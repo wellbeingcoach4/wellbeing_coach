@@ -33,12 +33,12 @@ class TestUserHistoryService:
     def test_get_user_history_success(self, user_history_service, mock_db):
         """
         Test successful retrieval of user history
-        
+
         Verifies that the service correctly aggregates mood, feedback, and activity data
         from the repository layer.
         """
         user_id = "test_user_123"
-        
+
         # Mock repository responses
         mock_moods = [
             {
@@ -52,7 +52,7 @@ class TestUserHistoryService:
                 "input_text": "I'm feeling great"
             }
         ]
-        
+
         mock_feedback = [
             {
                 "id": 1,
@@ -62,16 +62,16 @@ class TestUserHistoryService:
                 "created_at": datetime.now()
             }
         ]
-        
+
         mock_activities = []
-        
+
         # Patch repository methods
         with patch('app.service.user_history_service.db_repository.get_user_moods', return_value=mock_moods), \
-             patch('app.service.user_history_service.db_repository.get_user_feedback', return_value=mock_feedback), \
-             patch('app.service.user_history_service.db_repository.get_user_activities', return_value=mock_activities):
-            
+                patch('app.service.user_history_service.db_repository.get_user_feedback', return_value=mock_feedback), \
+                patch('app.service.user_history_service.db_repository.get_user_activities', return_value=mock_activities):
+
             result = user_history_service.get_user_history(user_id)
-        
+
         # Assertions
         assert result["user_id"] == user_id
         assert result["total_moods"] == 1
@@ -83,18 +83,18 @@ class TestUserHistoryService:
     def test_get_user_history_empty(self, user_history_service):
         """
         Test retrieval of user history when no records exist
-        
+
         Verifies that the service returns empty lists without errors.
         """
         user_id = "nonexistent_user"
-        
+
         # Patch repository methods to return empty lists
         with patch('app.service.user_history_service.db_repository.get_user_moods', return_value=[]), \
-             patch('app.service.user_history_service.db_repository.get_user_feedback', return_value=[]), \
-             patch('app.service.user_history_service.db_repository.get_user_activities', return_value=[]):
-            
+                patch('app.service.user_history_service.db_repository.get_user_feedback', return_value=[]), \
+                patch('app.service.user_history_service.db_repository.get_user_activities', return_value=[]):
+
             result = user_history_service.get_user_history(user_id)
-        
+
         # Assertions
         assert result["user_id"] == user_id
         assert result["total_moods"] == 0
@@ -108,7 +108,7 @@ class TestUserHistoryService:
     async def test_get_periodic_mood_valid_range(self, user_history_service):
         """
         Test periodic mood retrieval with valid date range
-        
+
         Verifies that the service correctly:
         1. Validates the date range
         2. Retrieves mood data for the period
@@ -118,7 +118,7 @@ class TestUserHistoryService:
         user_id = "test_user_123"
         from_date = datetime(2024, 1, 1)
         to_date = datetime(2024, 1, 31)
-        
+
         mock_moods = [
             {
                 "id": 1,
@@ -141,18 +141,18 @@ class TestUserHistoryService:
                 "input_text": "Finished the project"
             }
         ]
-        
+
         mock_ai_response = {
             "period_analysis": "You had a positive month overall",
             "recommendation": "Continue engaging in activities that make you happy"
         }
-        
+
         # Patch repository and LLM methods
         with patch('app.service.user_history_service.db_repository.get_user_moods_in_period', return_value=mock_moods), \
-             patch.object(user_history_service, '_generate_mood_analysis', return_value=mock_ai_response):
-            
+                patch.object(user_history_service, '_generate_mood_analysis', return_value=mock_ai_response):
+
             result = await user_history_service.get_periodic_mood(user_id, from_date, to_date)
-        
+
         # Assertions
         assert result["user_id"] == user_id
         assert len(result["moods_in_period"]) == 2
@@ -161,26 +161,27 @@ class TestUserHistoryService:
         assert result["mood_statistics"]["average_confidence"] > 0
         assert "period_analysis" in result
         assert "recommendation" in result
-        assert all("llm_provider" in mood for mood in result["moods_in_period"])
+        assert all(
+            "llm_provider" in mood for mood in result["moods_in_period"])
 
     @pytest.mark.asyncio
     async def test_get_periodic_mood_invalid_date_range(self, user_history_service):
         """
         Test periodic mood retrieval with invalid date range
-        
+
         Verifies that the service raises ValueError when from_date > to_date.
         """
         user_id = "test_user_123"
         from_date = datetime(2024, 1, 31)
         to_date = datetime(2024, 1, 1)
-        
+
         with pytest.raises(ValueError, match="from_date must be before or equal to to_date"):
             await user_history_service.get_periodic_mood(user_id, from_date, to_date)
 
     def test_normalize_periodic_date_range_date_only(self):
         """
         Test normalization of date-only periodic mood query parameters
-        
+
         Verifies that a date-only to_date is expanded to the end of the day.
         """
         start_date = date(2024, 1, 15)
@@ -195,7 +196,7 @@ class TestUserHistoryService:
     def test_calculate_mood_statistics(self, user_history_service):
         """
         Test mood statistics calculation
-        
+
         Verifies that the service correctly calculates:
         - Mood distribution
         - Average confidence score
@@ -207,9 +208,9 @@ class TestUserHistoryService:
             {"mood_analysed": "calm", "confidence_score": 0.85},
             {"mood_analysed": "stressed", "confidence_score": 0.70},
         ]
-        
+
         stats = user_history_service._calculate_mood_statistics(moods)
-        
+
         # Assertions
         assert stats["total_moods"] == 4
         assert stats["mood_distribution"]["happy"] == 2
@@ -222,13 +223,13 @@ class TestUserHistoryService:
     def test_calculate_mood_statistics_empty(self, user_history_service):
         """
         Test mood statistics calculation with empty mood list
-        
+
         Verifies that the service returns sensible defaults for empty data.
         """
         moods = []
-        
+
         stats = user_history_service._calculate_mood_statistics(moods)
-        
+
         # Assertions
         assert stats["total_moods"] == 0
         assert stats["mood_distribution"] == {}
@@ -239,7 +240,7 @@ class TestUserHistoryService:
     def test_format_mood_data_for_llm(self, user_history_service):
         """
         Test formatting of mood data for LLM input
-        
+
         Verifies that the service correctly formats mood data into
         a readable string for LLM analysis.
         """
@@ -255,9 +256,9 @@ class TestUserHistoryService:
                 "confidence_score": 0.85
             }
         ]
-        
+
         formatted = user_history_service._format_mood_data_for_llm(moods)
-        
+
         # Assertions
         assert "2024-01-15" in formatted
         assert "happy" in formatted
@@ -267,11 +268,11 @@ class TestUserHistoryService:
     def test_format_mood_data_for_llm_empty(self, user_history_service):
         """
         Test formatting of empty mood data for LLM input
-        
+
         Verifies that the service returns a default message for empty data.
         """
         formatted = user_history_service._format_mood_data_for_llm([])
-        
+
         assert "No mood data available" in formatted
 
 
@@ -281,7 +282,7 @@ class TestUserHistorySchemas:
     def test_user_history_response_schema(self):
         """
         Test UserHistoryResponse schema validation
-        
+
         Verifies that the schema correctly validates user history data.
         """
         history_data = {
@@ -293,22 +294,23 @@ class TestUserHistorySchemas:
             "total_feedback": 0,
             "total_activities": 0
         }
-        
+
         response = UserHistoryResponse(**history_data)
-        
+
         assert response.user_id == "test_user"
         assert response.total_moods == 0
 
     def test_periodic_mood_response_schema(self):
         """
         Test PeriodicMoodResponse schema validation
-        
+
         Verifies that the schema correctly validates periodic mood data.
         """
         periodic_data = {
             "user_id": "test_user",
             "from_date": datetime(2024, 1, 1),
             "to_date": datetime(2024, 1, 31),
+            "llm_provider": "ollama",
             "moods_in_period": [],
             "mood_statistics": {
                 "total_moods": 0,
@@ -320,8 +322,8 @@ class TestUserHistorySchemas:
             "period_analysis": "Test analysis",
             "recommendation": "Test recommendation"
         }
-        
+
         response = PeriodicMoodResponse(**periodic_data)
-        
+
         assert response.user_id == "test_user"
         assert response.mood_statistics.total_moods == 0

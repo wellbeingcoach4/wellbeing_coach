@@ -4,7 +4,7 @@ Handles all database operations for mood analysis, feedback, activities, and his
 """
 import logging
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlalchemy.orm import Session
 
 from app.database.models import MoodAnalysis, UserActivitySelection, UserFeedback
@@ -23,7 +23,7 @@ def save_mood_analysis(
 ) -> Optional[MoodAnalysis]:
     """
     Save mood analysis result to database
-    
+
     Args:
         db: Database session
         user_id: User identifier
@@ -32,7 +32,7 @@ def save_mood_analysis(
         reason_for_mood: Reason for the mood
         confidence_score: Confidence score (0-1)
         llm_provider: Provider used for analysis
-        
+
     Returns:
         Created MoodAnalysis record or None if failed
     """
@@ -45,18 +45,20 @@ def save_mood_analysis(
             confidence_score=confidence_score,
             llm_provider=llm_provider
         )
-        
+
         db.add(mood_record)
         db.commit()
         db.refresh(mood_record)
-        
-        logger.info(f"Mood analysis saved with ID: {mood_record.id} for user: {user_id}")
+
+        logger.info(
+            f"Mood analysis saved with ID: {mood_record.id} for user: {user_id}")
         return mood_record
-        
+
     except Exception as e:
         logger.error(f"Failed to save mood analysis: {str(e)}")
         db.rollback()
         return None
+
 
 def save_user_activity_selection(
     db,
@@ -75,32 +77,33 @@ def save_user_activity_selection(
 
         record = UserActivitySelection(
 
-        user_id=user_id,
+            user_id=user_id,
 
-        activity_id=activity_id,
+            activity_id=activity_id,
 
-        activity_name=activity_name,
+            activity_name=activity_name,
 
-        available_time_minutes=available_time_minutes,
+            available_time_minutes=available_time_minutes,
 
-        ai_session_title=ai_session_title,
+            ai_session_title=ai_session_title,
 
-        ai_session_steps=ai_session_steps,
+            ai_session_steps=ai_session_steps,
 
-        ai_estimated_duration=ai_estimated_duration,
+            ai_estimated_duration=ai_estimated_duration,
 
-        llm_provider=llm_provider,
-        user_reason_for_mood=user_reason_for_mood,
-        custom_activity=custom_activity
+            llm_provider=llm_provider,
+            user_reason_for_mood=user_reason_for_mood,
+            custom_activity=custom_activity
         )
 
         db.add(record)
         db.commit()
         db.refresh(record)
-        
-        logger.info(f"User activity selection saved with ID: {record.id} for user: {user_id}")
+
+        logger.info(
+            f"User activity selection saved with ID: {record.id} for user: {user_id}")
         return record
-    
+
     except Exception as e:
         logger.error(f"Failed to save user activity selection: {str(e)}")
         db.rollback()
@@ -127,7 +130,8 @@ def save_feedback(
         db.commit()
         db.refresh(feedback)
 
-        logger.info(f"User feedback saved with ID: {feedback.id} for user: {user_id}")
+        logger.info(
+            f"User feedback saved with ID: {feedback.id} for user: {user_id}")
         return feedback
 
     except Exception as e:
@@ -146,17 +150,17 @@ def get_user_moods(
 ) -> List[Dict[str, Any]]:
     """
     Fetch all mood analyses for a specific user
-    
+
     Retrieves all mood analysis records associated with the given user,
     ordered by creation date in descending order (newest first).
-    
+
     Args:
         db: Database session
         user_id: User identifier
-        
+
     Returns:
         List of mood analysis records as dictionaries. Empty list if no records found.
-        
+
     Raises:
         Exception: If database query fails
     """
@@ -164,9 +168,9 @@ def get_user_moods(
         moods = db.query(MoodAnalysis).filter(
             MoodAnalysis.user_id == user_id
         ).order_by(MoodAnalysis.created_at.desc()).all()
-        
+
         logger.info(f"Fetched {len(moods)} mood records for user: {user_id}")
-        
+
         return [
             {
                 "id": mood.id,
@@ -180,9 +184,10 @@ def get_user_moods(
             }
             for mood in moods
         ]
-        
+
     except Exception as e:
-        logger.error(f"Failed to fetch mood records for user {user_id}: {str(e)}")
+        logger.error(
+            f"Failed to fetch mood records for user {user_id}: {str(e)}")
         raise
 
 
@@ -192,17 +197,17 @@ def get_user_feedback(
 ) -> List[Dict[str, Any]]:
     """
     Fetch all feedback submissions for a specific user
-    
+
     Retrieves all feedback records associated with the given user,
     ordered by creation date in descending order (newest first).
-    
+
     Args:
         db: Database session
         user_id: User identifier
-        
+
     Returns:
         List of feedback records as dictionaries. Empty list if no records found.
-        
+
     Raises:
         Exception: If database query fails
     """
@@ -210,9 +215,10 @@ def get_user_feedback(
         feedback_list = db.query(UserFeedback).filter(
             UserFeedback.user_id == user_id
         ).order_by(UserFeedback.created_at.desc()).all()
-        
-        logger.info(f"Fetched {len(feedback_list)} feedback records for user: {user_id}")
-        
+
+        logger.info(
+            f"Fetched {len(feedback_list)} feedback records for user: {user_id}")
+
         return [
             {
                 "id": feedback.id,
@@ -223,9 +229,10 @@ def get_user_feedback(
             }
             for feedback in feedback_list
         ]
-        
+
     except Exception as e:
-        logger.error(f"Failed to fetch feedback records for user {user_id}: {str(e)}")
+        logger.error(
+            f"Failed to fetch feedback records for user {user_id}: {str(e)}")
         raise
 
 
@@ -235,17 +242,17 @@ def get_user_activities(
 ) -> List[Dict[str, Any]]:
     """
     Fetch all activity selections for a specific user
-    
+
     Retrieves all activity selection records associated with the given user,
     ordered by creation date in descending order (newest first).
-    
+
     Args:
         db: Database session
         user_id: User identifier
-        
+
     Returns:
         List of activity selection records as dictionaries. Empty list if no records found.
-        
+
     Raises:
         Exception: If database query fails
     """
@@ -253,9 +260,10 @@ def get_user_activities(
         activities = db.query(UserActivitySelection).filter(
             UserActivitySelection.user_id == user_id
         ).order_by(UserActivitySelection.id.desc()).all()
-        
-        logger.info(f"Fetched {len(activities)} activity records for user: {user_id}")
-        
+
+        logger.info(
+            f"Fetched {len(activities)} activity records for user: {user_id}")
+
         return [
             {
                 "id": activity.id,
@@ -265,13 +273,14 @@ def get_user_activities(
                 "available_time_minutes": activity.available_time_minutes,
                 "ai_session_title": activity.ai_session_title,
                 "ai_estimated_duration": activity.ai_estimated_duration,
-                "created_at": getattr(activity, 'created_at', datetime.utcnow())
+                "created_at": getattr(activity, 'created_at', datetime.now(UTC))
             }
             for activity in activities
         ]
-        
+
     except Exception as e:
-        logger.error(f"Failed to fetch activity records for user {user_id}: {str(e)}")
+        logger.error(
+            f"Failed to fetch activity records for user {user_id}: {str(e)}")
         raise
 
 
@@ -283,20 +292,20 @@ def get_user_moods_in_period(
 ) -> List[Dict[str, Any]]:
     """
     Fetch all mood analyses for a user within a specific date range
-    
+
     Retrieves mood analysis records where the creation timestamp falls
     between from_date (inclusive) and to_date (inclusive).
-    
+
     Args:
         db: Database session
         user_id: User identifier
         from_date: Start date of the period (inclusive)
         to_date: End date of the period (inclusive)
-        
+
     Returns:
         List of mood analysis records within the date range as dictionaries.
         Empty list if no records found.
-        
+
     Raises:
         ValueError: If from_date is after to_date
         Exception: If database query fails
@@ -304,18 +313,18 @@ def get_user_moods_in_period(
     try:
         if from_date > to_date:
             raise ValueError("from_date must be before or equal to to_date")
-        
+
         moods = db.query(MoodAnalysis).filter(
             MoodAnalysis.user_id == user_id,
             MoodAnalysis.created_at >= from_date,
             MoodAnalysis.created_at <= to_date
         ).order_by(MoodAnalysis.created_at.asc()).all()
-        
+
         logger.info(
             f"Fetched {len(moods)} mood records for user {user_id} "
             f"in period {from_date} to {to_date}"
         )
-        
+
         return [
             {
                 "id": mood.id,
@@ -329,7 +338,7 @@ def get_user_moods_in_period(
             }
             for mood in moods
         ]
-        
+
     except ValueError as e:
         logger.error(f"Invalid date range: {str(e)}")
         raise

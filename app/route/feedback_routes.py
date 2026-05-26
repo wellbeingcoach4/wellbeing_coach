@@ -1,3 +1,10 @@
+"""
+Feedback Routes Module.
+
+Defines API endpoints for handling user feedback
+operations in the Wellbeing Coach application.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 

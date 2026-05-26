@@ -1,3 +1,12 @@
+"""
+Feedback Service Module.
+
+Handles user feedback operations for the Wellbeing Coach
+application, including saving and retrieving feedback
+data through the database repository layer.
+"""
+
+
 import logging
 from typing import Optional
 from sqlalchemy.orm import Session

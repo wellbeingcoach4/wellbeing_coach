@@ -1,3 +1,10 @@
+"""
+Wellbeing Routes Module.
+
+Defines API endpoints related to wellbeing activities,
+personalized wellbeing session generation, and wellness
+recommendations for the Wellbeing Coach application.
+"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -14,6 +21,7 @@ router = APIRouter(
     prefix="/wellbeing",
     tags=["Wellbeing"]
 )
+
 
 @router.get(
     "/activities",
@@ -46,7 +54,8 @@ async def select_activity(
             activity_id=request.activity_id,
             available_time_minutes=request.available_time_minutes,
             mood=request.mood,
-            user_reason_for_mood=getattr(request, 'user_reason_for_mood', None),
+            user_reason_for_mood=getattr(
+                request, 'user_reason_for_mood', None),
             custom_activity=getattr(request, 'custom_activity', None)
         )
 
