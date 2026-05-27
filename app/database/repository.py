@@ -50,11 +50,11 @@ def save_mood_analysis(
         db.commit()
         db.refresh(mood_record)
         
-        logger.info(f"Mood analysis saved with ID: {mood_record.id} for user: {user_id}")
+        logger.info("Mood analysis saved with ID=%s", mood_record.id)
         return mood_record
         
-    except Exception as e:
-        logger.error(f"Failed to save mood analysis: {str(e)}")
+    except Exception:
+        logger.exception("Failed to save mood analysis")
         db.rollback()
         return None
 
@@ -98,11 +98,11 @@ def save_user_activity_selection(
         db.commit()
         db.refresh(record)
         
-        logger.info(f"User activity selection saved with ID: {record.id} for user: {user_id}")
+        logger.info("User activity selection saved with ID=%s", record.id)
         return record
     
-    except Exception as e:
-        logger.error(f"Failed to save user activity selection: {str(e)}")
+    except Exception:
+        logger.exception("Failed to save user activity selection")
         db.rollback()
         return None
 
@@ -127,11 +127,11 @@ def save_feedback(
         db.commit()
         db.refresh(feedback)
 
-        logger.info(f"User feedback saved with ID: {feedback.id} for user: {user_id}")
+        logger.info("User feedback saved with ID=%s", feedback.id)
         return feedback
 
-    except Exception as e:
-        logger.error(f"Failed to save user feedback: {str(e)}")
+    except Exception:
+        logger.exception("Failed to save user feedback")
         db.rollback()
         return None
 
@@ -165,7 +165,7 @@ def get_user_moods(
             MoodAnalysis.user_id == user_id
         ).order_by(MoodAnalysis.created_at.desc()).all()
         
-        logger.info(f"Fetched {len(moods)} mood records for user: {user_id}")
+        logger.info("Fetched %s mood records", len(moods))
         
         return [
             {
@@ -181,8 +181,8 @@ def get_user_moods(
             for mood in moods
         ]
         
-    except Exception as e:
-        logger.error(f"Failed to fetch mood records for user {user_id}: {str(e)}")
+    except Exception:
+        logger.exception("Failed to fetch mood records")
         raise
 
 
@@ -211,7 +211,7 @@ def get_user_feedback(
             UserFeedback.user_id == user_id
         ).order_by(UserFeedback.created_at.desc()).all()
         
-        logger.info(f"Fetched {len(feedback_list)} feedback records for user: {user_id}")
+        logger.info("Fetched %s feedback records", len(feedback_list))
         
         return [
             {
@@ -224,8 +224,8 @@ def get_user_feedback(
             for feedback in feedback_list
         ]
         
-    except Exception as e:
-        logger.error(f"Failed to fetch feedback records for user {user_id}: {str(e)}")
+    except Exception:
+        logger.exception("Failed to fetch feedback records")
         raise
 
 
@@ -254,7 +254,7 @@ def get_user_activities(
             UserActivitySelection.user_id == user_id
         ).order_by(UserActivitySelection.id.desc()).all()
         
-        logger.info(f"Fetched {len(activities)} activity records for user: {user_id}")
+        logger.info("Fetched %s activity records", len(activities))
         
         return [
             {
@@ -270,8 +270,8 @@ def get_user_activities(
             for activity in activities
         ]
         
-    except Exception as e:
-        logger.error(f"Failed to fetch activity records for user {user_id}: {str(e)}")
+    except Exception:
+        logger.exception("Failed to fetch activity records")
         raise
 
 
@@ -312,8 +312,7 @@ def get_user_moods_in_period(
         ).order_by(MoodAnalysis.created_at.asc()).all()
         
         logger.info(
-            f"Fetched {len(moods)} mood records for user {user_id} "
-            f"in period {from_date} to {to_date}"
+            "Fetched %s mood records in requested period", len(moods)
         )
         
         return [
@@ -331,11 +330,8 @@ def get_user_moods_in_period(
         ]
         
     except ValueError as e:
-        logger.error(f"Invalid date range: {str(e)}")
+        logger.warning(f"Invalid date range: {str(e)}")
         raise
-    except Exception as e:
-        logger.error(
-            f"Failed to fetch mood records for user {user_id} in period "
-            f"{from_date} to {to_date}: {str(e)}"
-        )
+    except Exception:
+        logger.exception("Failed to fetch mood records in period")
         raise

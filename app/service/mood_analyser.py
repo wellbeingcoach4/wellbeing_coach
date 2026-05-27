@@ -48,14 +48,18 @@ class MoodAnalyzerService:
         Returns:
             Dictionary containing mood_analysed, reason_for_mood, and metadata
         """
-        logger.info(f"Starting mood analysis for user: {user_id}")
+        logger.info("Starting mood analysis workflow")
         
         # Try primary provider first
         result = await self._try_llm_request(self.primary_provider, text)
         
         # If primary fails, try fallback
         if result is None:
-            logger.warning(f"Primary provider ({self.primary_provider}) failed. Trying fallback ({self.fallback_provider})...")
+            logger.warning(
+                "Primary provider failed (%s). Trying fallback (%s).",
+                self.primary_provider,
+                self.fallback_provider,
+            )
             result = await self._try_llm_request(self.fallback_provider, text)
         
         # If both fail, return default/fallback response
@@ -112,8 +116,8 @@ class MoodAnalyzerService:
             else:
                 logger.error(f"Unknown provider: {provider}")
                 return None
-        except Exception as e:
-            logger.error(f"Error calling {provider}: {str(e)}")
+        except Exception:
+            logger.exception("Error calling provider %s", provider)
             return None
 
     async def _call_ollama(self, text: str) -> Optional[Dict[str, Any]]:
@@ -152,8 +156,8 @@ class MoodAnalyzerService:
                 logger.error(f"Ollama API error: {response.status_code}")
                 return None
                 
-        except Exception as e:
-            logger.error(f"Ollama request failed: {str(e)}")
+        except Exception:
+            logger.exception("Ollama request failed")
             return None
 
     async def _call_groq(self, text: str) -> Optional[Dict[str, Any]]:
@@ -193,8 +197,8 @@ class MoodAnalyzerService:
                 logger.error(f"Groq API error: "f"{response.status_code} - {response.text}")
                 return None
                 
-        except Exception as e:
-            logger.error(f"Groq request failed: {str(e)}")
+        except Exception:
+            logger.exception("Groq request failed")
             return None
 
     async def _call_gemini(self, text: str) -> Optional[Dict[str, Any]]:
@@ -240,15 +244,15 @@ class MoodAnalyzerService:
                 logger.error(f"Gemini API error: "f"{response.status_code} - {response.text}")
                 return None
                 
-        except Exception as e:
-            logger.error(f"Gemini request failed: {str(e)}")
+        except Exception:
+            logger.exception("Gemini request failed")
             return None
 
     def _parse_llm_response(self,response_text: str) -> Optional[Dict[str, str]]:
         """Parse and validate LLM JSON response """
         try:
 
-            logger.info(f"Raw LLM Response: {response_text}")
+            logger.debug("Received LLM response payload")
 
             response_text = response_text.strip()
 
@@ -285,21 +289,18 @@ class MoodAnalyzerService:
 
         except json.JSONDecodeError as e:
 
-            logger.error(
+            logger.warning(
                 f"JSON parsing failed: {str(e)}"
             )
 
-            logger.error(
-                f"Invalid JSON response received: {response_text}"
+            logger.warning(
+                "Invalid JSON response received from provider"
             )
 
             return None
 
-        except Exception as e:
-
-            logger.error(
-                f"Unexpected parsing error: {str(e)}"
-            )
+        except Exception:
+            logger.exception("Unexpected parsing error while handling mood response")
 
             return None
         

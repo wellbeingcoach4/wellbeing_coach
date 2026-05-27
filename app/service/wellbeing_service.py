@@ -75,6 +75,7 @@ class WellbeingService:
         )
 
     def get_available_activities(self):
+        logger.debug("Returning wellbeing activities catalog")
 
         return {
             "activities": WELLBEING_ACTIVITIES
@@ -89,6 +90,11 @@ class WellbeingService:
         user_reason_for_mood: Optional[str] = None,
         custom_activity: Optional[str] = None
     ):
+        logger.info(
+            "Selecting activity activity_id=%s custom_activity_provided=%s",
+            activity_id,
+            bool(custom_activity),
+        )
 
         if activity_id == 0:
             if not custom_activity or not custom_activity.strip():
@@ -163,6 +169,7 @@ class WellbeingService:
             )
         )
 
+        logger.info("Wellbeing session generated and saved")
         return {
             "message": (
                 "Session generated successfully"
@@ -317,11 +324,8 @@ class WellbeingService:
 
             return None
 
-        except Exception as e:
-
-            logger.error(
-                f"LLM Provider Error: {str(e)}"
-            )
+        except Exception:
+            logger.exception("LLM provider call failed for wellbeing session")
 
             return None
 
@@ -334,6 +338,7 @@ class WellbeingService:
     custom_activity: Optional[str] = None
     ):
 
+        logger.debug("Calling Gemini for wellbeing session generation")
         config = llm_config.gemini
 
         prompt = WELLBEING_SESSION_PROMPT.format(
@@ -408,6 +413,7 @@ class WellbeingService:
         custom_activity: Optional[str] = None
     ):
 
+        logger.debug("Calling Groq for wellbeing session generation")
         config = llm_config.groq
 
         prompt = WELLBEING_SESSION_PROMPT.format(
@@ -474,6 +480,7 @@ class WellbeingService:
         custom_activity: Optional[str] = None
     ):
 
+        logger.debug("Calling Ollama for wellbeing session generation")
         config = llm_config.ollama
         mood=mood or "Not specified",
             
@@ -566,10 +573,7 @@ class WellbeingService:
                 )
             }
 
-        except Exception as e:
-
-            logger.error(
-                f"Parsing Error: {str(e)}"
-            )
+        except Exception:
+            logger.exception("Failed to parse wellbeing session response")
 
             return None

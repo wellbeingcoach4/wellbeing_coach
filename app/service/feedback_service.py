@@ -13,6 +13,7 @@ class FeedbackService:
         self.db = db
 
     def save_feedback(self, user_id: str, feedback_text: str, rating: Optional[int] = None):
+        logger.info("Saving user feedback rating_provided=%s", rating is not None)
         saved = repository.save_feedback(
             db=self.db,
             user_id=user_id,
@@ -21,8 +22,10 @@ class FeedbackService:
         )
 
         if not saved:
+            logger.warning("Feedback save failed in repository layer")
             raise ValueError("Failed to save feedback")
 
+        logger.info("Feedback saved successfully")
         return {
             "message": "Feedback saved successfully",
             "database_id": saved.id,

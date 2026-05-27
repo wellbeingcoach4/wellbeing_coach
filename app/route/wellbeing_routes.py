@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,8 @@ from app.schema.wellbeing_schema import (
 )
 
 from app.service.wellbeing_service import WellbeingService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/wellbeing",
@@ -22,6 +26,7 @@ router = APIRouter(
 def get_activities(
     db: Session = Depends(get_db)
 ):
+    logger.info("Fetching wellbeing activities catalog")
 
     service = WellbeingService(db)
 
@@ -36,6 +41,11 @@ async def select_activity(
     request: ActivitySelectionRequest,
     db: Session = Depends(get_db)
 ):
+    logger.info(
+        "Selecting wellbeing activity activity_id=%s custom_activity_provided=%s",
+        request.activity_id,
+        bool(getattr(request, "custom_activity", None)),
+    )
 
     try:
 
@@ -51,7 +61,11 @@ async def select_activity(
         )
 
     except ValueError as e:
+        logger.warning("Activity selection validation failed: %s", str(e))
         raise HTTPException(
             status_code=400,
             detail=str(e)
         )
+    except Exception:
+        logger.exception("Unhandled exception in wellbeing activity selection")
+        raise
