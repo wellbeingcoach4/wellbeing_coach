@@ -1,15 +1,16 @@
 [project]
-name = "wellbeing-coach"
+name = "app"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "dotenv>=0.9.9",
     "fastapi>=0.136.3",
+    "httpx>=0.28.1",
     "openai>=2.38.0",
-    "psycopg2>=2.9.12",
-    "pylint>=4.0.5",
-    "python-dotenv>=1.2.2",
-    "sqlalchemy>=2.0.50",
+    "pytest>=9.0.3",
+    "slowapi>=0.1.9",
+    "sse-starlette>=3.4.4",
     "uvicorn>=0.48.0",
 ]

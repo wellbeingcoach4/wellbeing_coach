@@ -1,146 +1,314 @@
-"""
-Sample tests for mood analyzer service
-Run with: pytest tests/test_mood_analyzer.py -v
-"""
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from unittest.mock import AsyncMock, Mock, patch
 
-from app.database.models import Base
-from app.service.mood_analyser import MoodAnalyzerService
+from service import mood_analyser
+from service.mood_analyser import MoodAnalyzerService
+from app.llm.config import LLMProvider
 
 
 @pytest.fixture
-def test_db():
-    """Create an in-memory SQLite database for testing"""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
-    
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    db = TestingSessionLocal()
-    
-    yield db
-    
-    db.close()
+def mock_db():
+    return Mock()
 
 
-def test_parse_llm_response_valid_json(test_db):
-    """Test parsing valid JSON response"""
-    service = MoodAnalyzerService(db=test_db)
-    
-    response_text = '{
+@pytest.fixture
+def service(mock_db):
+    svc = MoodAnalyzerService(mock_db)
+    svc.primary_provider = LLMProvider.OLLAMA
+    svc.fallback_provider = LLMProvider.GROQ
+    return svc
+
+
+@pytest.fixture
+def valid_response():
+    return {
         "mood_analysed": "happy",
-        "reason_for_mood": "Positive language detected"
-    }'
-    
-    result = service._parse_llm_response(response_text)
-    
-    assert result is not None
-    assert result["mood_analysed"] == "happy"
-    assert result["reason_for_mood"] == "Positive language detected"
-
-
-def test_parse_llm_response_with_markdown(test_db):
-    """Test parsing JSON response wrapped in markdown code blocks"""
-    service = MoodAnalyzerService(db=test_db)
-    
-    response_text = '''```json
-    {
-        "mood_analysed": "sad",
-        "reason_for_mood": "Negative expressions and sadness indicators"
+        "reason_for_mood": "Positive words detected",
+        "confidence_score": 0.95,
+        "provider_used": "ollama"
     }
-    ```'''
-    
-    result = service._parse_llm_response(response_text)
-    
-    assert result is not None
+
+
+# =========================================================
+# analyze_mood()
+# =========================================================
+
+@pytest.mark.asyncio
+@patch("mood_analyser.db_repository.save_mood_analysis")
+async def test_analyze_mood_success(
+    mock_save,
+    service,
+    valid_response
+):
+    mock_record = Mock()
+    mock_record.id = 1
+    mock_save.return_value = mock_record
+
+    service._try_llm_request = AsyncMock(return_value=valid_response)
+
+    result = await service.analyze_mood(
+        user_id="user123",
+        text="I am very happy today"
+    )
+
+    assert result["mood_analysed"] == "happy"
+    assert result["reason_for_mood"] == "Positive words detected"
+    assert result["llm_provider"] == "ollama"
+    assert result["database_id"] == 1
+
+
+@pytest.mark.asyncio
+@patch("mood_analyser.db_repository.save_mood_analysis")
+async def test_analyze_mood_fallback_provider_used(
+    mock_save,
+    service,
+    valid_response
+):
+    mock_record = Mock()
+    mock_record.id = 2
+    mock_save.return_value = mock_record
+
+    service._try_llm_request = AsyncMock(
+        side_effect=[
+            None,
+            {
+                **valid_response,
+                "provider_used": "groq"
+            }
+        ]
+    )
+
+    result = await service.analyze_mood(
+        user_id="user123",
+        text="Feeling anxious"
+    )
+
+    assert result["llm_provider"] == "groq"
+
+
+@pytest.mark.asyncio
+@patch("mood_analyser.db_repository.save_mood_analysis")
+async def test_analyze_mood_all_providers_fail(
+    mock_save,
+    service
+):
+    mock_record = Mock()
+    mock_record.id = 3
+    mock_save.return_value = mock_record
+
+    service._try_llm_request = AsyncMock(return_value=None)
+
+    result = await service.analyze_mood(
+        user_id="user123",
+        text="test text"
+    )
+
+    assert result["mood_analysed"] == "neutral"
+    assert result["llm_provider"] == "default"
+    assert result["confidence_score"] == 0.0
+
+
+@pytest.mark.asyncio
+@patch("mood_analyser.db_repository.save_mood_analysis")
+async def test_analyze_mood_invalid_response_uses_default(
+    mock_save,
+    service
+):
+    mock_record = Mock()
+    mock_record.id = 4
+    mock_save.return_value = mock_record
+
+    invalid_response = {
+        "mood_analysed": "",
+        "reason_for_mood": ""
+    }
+
+    service._try_llm_request = AsyncMock(
+        return_value=invalid_response
+    )
+
+    result = await service.analyze_mood(
+        user_id="user123",
+        text="test"
+    )
+
+    assert result["mood_analysed"] == "neutral"
+    assert result["llm_provider"] == "default"
+
+
+# =========================================================
+# _try_llm_request()
+# =========================================================
+
+@pytest.mark.asyncio
+async def test_try_llm_request_ollama(service):
+    service._call_ollama = AsyncMock(
+        return_value={"mood_analysed": "happy"}
+    )
+
+    result = await service._try_llm_request(
+        LLMProvider.OLLAMA,
+        "text"
+    )
+
+    assert result["mood_analysed"] == "happy"
+
+
+@pytest.mark.asyncio
+async def test_try_llm_request_groq(service):
+    service._call_groq = AsyncMock(
+        return_value={"mood_analysed": "sad"}
+    )
+
+    result = await service._try_llm_request(
+        LLMProvider.GROQ,
+        "text"
+    )
+
     assert result["mood_analysed"] == "sad"
 
 
-def test_parse_llm_response_invalid_json(test_db):
-    """Test parsing invalid JSON response"""
-    service = MoodAnalyzerService(db=test_db)
-    
-    response_text = "This is not valid JSON"
-    result = service._parse_llm_response(response_text)
-    
-    assert result is None
-
-
-def test_parse_llm_response_missing_fields(test_db):
-    """Test parsing JSON with missing required fields"""
-    service = MoodAnalyzerService(db=test_db)
-    
-    response_text = '{"mood_analysed": "happy"}'
-    result = service._parse_llm_response(response_text)
-    
-    assert result is None
-
-
-def test_default_response(test_db):
-    """Test default fallback response"""
-    service = MoodAnalyzerService(db=test_db)
-    
-    default = service._get_default_response()
-    
-    assert default["mood_analysed"] == "neutral"
-    assert default["provider_used"] == "default"
-    assert default["confidence_score"] == 0.0
-
-
-def test_store_mood_analysis(test_db):
-    """Test storing mood analysis in database"""
-    service = MoodAnalyzerService(db=test_db)
-    
-    record = service._store_mood_analysis(
-        user_id="test_user",
-        input_text="I am happy",
-        mood_analysed="happy",
-        reason_for_mood="Positive expression",
-        confidence_score=0.95,
-        llm_provider="ollama"
+@pytest.mark.asyncio
+async def test_try_llm_request_gemini(service):
+    service._call_gemini = AsyncMock(
+        return_value={"mood_analysed": "neutral"}
     )
-    
-    assert record is not None
-    assert record.user_id == "test_user"
-    assert record.mood_analysed == "happy"
-    assert record.llm_provider == "ollama"
+
+    result = await service._try_llm_request(
+        LLMProvider.GEMINI,
+        "text"
+    )
+
+    assert result["mood_analysed"] == "neutral"
 
 
-def test_get_mood_history(test_db):
-    """Test retrieving mood history"""
-    service = MoodAnalyzerService(db=test_db)
-    
-    # Store multiple records
-    for i in range(3):
-        service._store_mood_analysis(
-            user_id="test_user",
-            input_text=f"Text {i}",
-            mood_analysed="happy",
-            reason_for_mood=f"Reason {i}",
-            confidence_score=0.9,
-            llm_provider="ollama"
-        )
-    
-    history = service.get_mood_history(user_id="test_user", limit=10)
-    
-    assert len(history) == 3
-    assert all(record.user_id == "test_user" for record in history)
+@pytest.mark.asyncio
+async def test_try_llm_request_unknown_provider(service):
+    result = await service._try_llm_request(
+        "INVALID_PROVIDER",
+        "text"
+    )
+
+    assert result is None
 
 
-def test_get_mood_history_empty(test_db):
-    """Test retrieving empty mood history"""
-    service = MoodAnalyzerService(db=test_db)
-    
-    history = service.get_mood_history(user_id="nonexistent_user", limit=10)
-    
-    assert len(history) == 0
+@pytest.mark.asyncio
+async def test_try_llm_request_exception(service):
+    service._call_ollama = AsyncMock(
+        side_effect=Exception("API failure")
+    )
+
+    result = await service._try_llm_request(
+        LLMProvider.OLLAMA,
+        "text"
+    )
+
+    assert result is None
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+# =========================================================
+# _parse_llm_response()
+# =========================================================
+
+def test_parse_llm_response_valid_json(service):
+    response = """
+    {
+        "mood_analysed": "happy",
+        "reason_for_mood": "Positive tone"
+    }
+    """
+
+    result = service._parse_llm_response(response)
+
+    assert result["mood_analysed"] == "happy"
+    assert result["reason_for_mood"] == "Positive tone"
+
+
+def test_parse_llm_response_markdown_json(service):
+    response = """
+    ```json
+    {
+        "mood_analysed": "sad",
+        "reason_for_mood": "Negative words"
+    }
+    ```
+    """
+
+    result = service._parse_llm_response(response)
+
+    assert result["mood_analysed"] == "sad"
+
+
+def test_parse_llm_response_invalid_json(service):
+    response = "invalid json"
+
+    result = service._parse_llm_response(response)
+
+    assert result is None
+
+
+def test_parse_llm_response_missing_fields(service):
+    response = """
+    {
+        "mood_analysed": "happy"
+    }
+    """
+
+    result = service._parse_llm_response(response)
+
+    assert result is None
+
+
+def test_parse_llm_response_empty_fields(service):
+    response = """
+    {
+        "mood_analysed": "",
+        "reason_for_mood": ""
+    }
+    """
+
+    result = service._parse_llm_response(response)
+
+    assert result is None
+
+
+# =========================================================
+# _get_default_response()
+# =========================================================
+
+def test_get_default_response(service):
+    result = service._get_default_response()
+
+    assert result["mood_analysed"] == "neutral"
+    assert result["provider_used"] == "default"
+    assert result["confidence_score"] == 0.0
+
+
+# =========================================================
+# _is_valid_response()
+# =========================================================
+
+def test_is_valid_response_true(service):
+    response = {
+        "mood_analysed": "happy",
+        "reason_for_mood": "positive"
+    }
+
+    assert service._is_valid_response(response) is True
+
+
+def test_is_valid_response_false_missing_fields(service):
+    response = {
+        "mood_analysed": "happy"
+    }
+
+    assert service._is_valid_response(response) is False
+
+
+def test_is_valid_response_false_empty_values(service):
+    response = {
+        "mood_analysed": "",
+        "reason_for_mood": ""
+    }
+
+    assert service._is_valid_response(response) is False
