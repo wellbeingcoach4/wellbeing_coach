@@ -22,6 +22,7 @@ _real_create_engine = sqlalchemy.create_engine
 
 
 def _patched_create_engine(url, *args, **kwargs):
+    """Drop unsupported pool args when tests run against SQLite."""
     if str(url).startswith("sqlite"):
         kwargs.pop("pool_size", None)
         kwargs.pop("max_overflow", None)
@@ -37,6 +38,7 @@ from app.main import app  # noqa: E402
 
 @pytest.fixture
 def db_engine():
+    """Create an isolated in-memory database per test function."""
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -50,11 +52,13 @@ def db_engine():
 
 @pytest.fixture
 def client(db_engine):
+    """Provide a FastAPI TestClient bound to the test database session."""
     session_factory = sessionmaker(
         autocommit=False, autoflush=False, bind=db_engine
     )
 
     def override_get_db():
+        """Dependency override that yields a short-lived DB session."""
         db = session_factory()
         try:
             yield db

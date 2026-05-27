@@ -1,8 +1,10 @@
-from datetime import date
+"""Integration tests for user history and periodic mood endpoints."""
+
 from unittest.mock import patch
 
 
 def _seed_user_data(client, mock_chat_completion):
+    """Create one mood, feedback, and activity record for a user."""
     mock_chat_completion(
         '{"mood_analysed":"happy","reason_for_mood":"Positive day"}'
     )
@@ -35,6 +37,7 @@ def _seed_user_data(client, mock_chat_completion):
 
 
 def test_get_user_history(client, mock_chat_completion):
+    """The history endpoint should aggregate mood, feedback, and activity data."""
     _seed_user_data(client, mock_chat_completion)
 
     response = client.get("/user/user01/history")
@@ -49,6 +52,7 @@ def test_get_user_history(client, mock_chat_completion):
 
 
 def test_get_periodic_mood(client, mock_chat_completion):
+    """Periodic mood endpoint should return stats plus LLM analysis."""
     _seed_user_data(client, mock_chat_completion)
 
     mock_chat_completion(
@@ -69,6 +73,7 @@ def test_get_periodic_mood(client, mock_chat_completion):
 
 
 def test_get_periodic_mood_invalid_date_range(client):
+    """Invalid date ranges should return a 400 validation-style response."""
     response = client.get(
         "/user/user01/mood/periodic",
         params={"from_date": "2024-02-01", "to_date": "2024-01-01"},
@@ -79,6 +84,7 @@ def test_get_periodic_mood_invalid_date_range(client):
 
 
 def test_get_user_history_empty(client):
+    """A user without records should return an empty history payload."""
     response = client.get("/user/newusr/history")
 
     assert response.status_code == 200
@@ -89,6 +95,7 @@ def test_get_user_history_empty(client):
 
 
 def test_get_user_history_internal_error(client):
+    """Repository errors should be wrapped into a 500 API response."""
     with patch(
         "app.service.user_history_service.db_repository.get_user_moods",
         side_effect=RuntimeError("history query failed"),

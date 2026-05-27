@@ -1,4 +1,8 @@
+"""Integration tests for wellbeing activity endpoints."""
+
+
 def test_get_activities(client):
+    """Verify the seeded wellbeing activity catalog is returned."""
     response = client.get("/wellbeing/activities")
 
     assert response.status_code == 200
@@ -8,6 +12,7 @@ def test_get_activities(client):
 
 
 def test_select_activity_success(client, mock_chat_completion):
+    """Verify selecting a predefined activity returns an AI-generated session."""
     mock_chat_completion(
         '{"session_title":"Calm Breathing","session_steps":["Inhale","Hold","Exhale"],'
         '"estimated_duration":"10 minutes","mood_addressed":"Stress relief"}'
@@ -32,6 +37,7 @@ def test_select_activity_success(client, mock_chat_completion):
 
 
 def test_select_custom_activity(client, mock_chat_completion):
+    """Verify activity_id=0 accepts and stores a custom activity name."""
     mock_chat_completion(
         '{"session_title":"Custom Yoga","session_steps":["Warm up","Stretch"],'
         '"estimated_duration":"20 minutes","mood_addressed":"Anxiety support"}'
@@ -53,6 +59,7 @@ def test_select_custom_activity(client, mock_chat_completion):
 
 
 def test_select_activity_invalid_id(client):
+    """Invalid activity IDs should surface as a 400 from the route layer."""
     response = client.post(
         "/wellbeing/select-activity",
         json={
@@ -67,6 +74,7 @@ def test_select_activity_invalid_id(client):
 
 
 def test_select_activity_missing_custom_activity(client):
+    """Schema validation should reject activity_id=0 without custom_activity."""
     response = client.post(
         "/wellbeing/select-activity",
         json={

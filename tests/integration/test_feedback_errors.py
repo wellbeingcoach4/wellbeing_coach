@@ -1,7 +1,10 @@
+"""Integration tests for feedback route error handling."""
+
 from unittest.mock import patch
 
 
 def test_submit_feedback_failure_returns_400(client):
+    """Service-level save failure should map to a client-facing 400 error."""
     with patch(
         "app.service.feedback_service.repository.save_feedback",
         return_value=None,
@@ -20,6 +23,7 @@ def test_submit_feedback_failure_returns_400(client):
 
 
 def test_submit_feedback_internal_error_returns_500(client):
+    """Unexpected repository exceptions should map to HTTP 500."""
     with patch(
         "app.service.feedback_service.repository.save_feedback",
         side_effect=RuntimeError("database unavailable"),

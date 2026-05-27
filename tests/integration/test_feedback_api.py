@@ -1,4 +1,8 @@
+"""Integration tests for feedback submission API."""
+
+
 def test_submit_feedback_success(client):
+    """Valid feedback with rating should be accepted and persisted."""
     response = client.post(
         "/feedback/",
         json={
@@ -16,6 +20,7 @@ def test_submit_feedback_success(client):
 
 
 def test_submit_feedback_without_rating(client):
+    """Rating is optional and should default to null in storage."""
     response = client.post(
         "/feedback/",
         json={
