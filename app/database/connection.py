@@ -31,7 +31,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def get_db() -> Session:
     """
     Dependency function to get database session
-    Usage in FastAPI: 
+    Usage in FastAPI:
         @app.get("/")
         def read_root(db: Session = Depends(get_db)):
             ...

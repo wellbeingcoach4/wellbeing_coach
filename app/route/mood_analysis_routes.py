@@ -21,17 +21,17 @@ async def analyze_mood(
 ) -> MoodResponse:
     """
     Analyze mood from input text
-    
+
     Workflow:
     1. Service processes text and calls LLM
     2. Service validates response
     3. Service calls database layer to store
     4. Returns result with database ID
-    
+
     Args:
         request: MoodRequest containing user_id and text
         db: Database session
-        
+
     Returns:
         MoodResponse with mood analysis results
     """
@@ -42,7 +42,7 @@ async def analyze_mood(
             user_id=request.user_id,
             text=request.text
         )
-        
+
         return MoodResponse(**result)
     except Exception:
         logger.exception("Unhandled exception during mood analysis")

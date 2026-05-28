@@ -1,0 +1,10 @@
+Functional Requirements
+You are free to design how your system works—as long as your solution meets the intent of helping users feel better in 5 minutes.
+Your solution might consider:
+
+Emotional or contextual cues from user input.
+Quick activities like mindfulness, movement, journaling prompts, or music.
+User feedback to refine recommendations over time.
+AI-generated personalized suggestions or interactions.
+
+The technical and functional approach is up to you—ensure it aligns with the project goals and can be demonstrated in a working prototype.

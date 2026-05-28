@@ -12,13 +12,24 @@ class FeedbackService:
     def __init__(self, db: Session):
         self.db = db
 
-    def save_feedback(self, user_id: str, feedback_text: str, rating: Optional[int] = None):
-        logger.info("Saving user feedback rating_provided=%s", rating is not None)
+    def save_feedback(
+        self,
+        user_id: str,
+        feedback_text: str,
+        rating: Optional[int] = None,
+        activity_selection_id: Optional[int] = None,
+    ):
+        logger.info(
+            "Saving user feedback rating_provided=%s activity_linked=%s",
+            rating is not None,
+            activity_selection_id is not None,
+        )
         saved = repository.save_feedback(
             db=self.db,
             user_id=user_id,
             feedback_text=feedback_text,
-            rating=rating
+            rating=rating,
+            activity_selection_id=activity_selection_id,
         )
 
         if not saved:

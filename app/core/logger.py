@@ -62,4 +62,3 @@ def setup_logging() -> None:
         uvicorn_logger.setLevel(log_level)
 
     _LOGGING_CONFIGURED = True
-

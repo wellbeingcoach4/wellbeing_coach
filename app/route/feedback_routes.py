@@ -23,7 +23,8 @@ def submit_feedback(request: FeedbackRequest, db: Session = Depends(get_db)):
         return service.save_feedback(
             user_id=request.user_id,
             feedback_text=request.feedback_text,
-            rating=request.rating
+            rating=request.rating,
+            activity_selection_id=request.activity_selection_id,
         )
     except ValueError as e:
         logger.warning("Feedback submission validation failed: %s", str(e))

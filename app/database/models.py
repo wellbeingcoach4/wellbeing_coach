@@ -49,11 +49,11 @@ class UserActivitySelection(Base):
     ai_estimated_duration = Column(String)
 
     llm_provider = Column(String)
-    
+
     user_reason_for_mood = Column(Text, nullable=True)
 
     custom_activity = Column(String(255), nullable=True)
-    
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
@@ -67,4 +67,5 @@ class UserFeedback(Base):
     user_id = Column(String(255), index=True, nullable=False)
     feedback_text = Column(Text, nullable=False)
     rating = Column(Integer, nullable=True)
+    activity_selection_id = Column(Integer, index=True, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

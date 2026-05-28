@@ -2,10 +2,9 @@
 Schema definitions for user history APIs
 Contains Pydantic models for user history and periodic mood analysis
 """
-from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
-
+from pydantic import BaseModel, Field
 
 class MoodHistoryItem(BaseModel):
     """
