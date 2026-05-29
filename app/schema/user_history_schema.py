@@ -2,10 +2,9 @@
 Schema definitions for user history APIs
 Contains Pydantic models for user history and periodic mood analysis
 """
-from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
-
+from pydantic import BaseModel, Field
 
 class MoodHistoryItem(BaseModel):
     """
@@ -32,12 +31,13 @@ class FeedbackHistoryItem(BaseModel):
     """
     id: int = Field(..., description="Database record ID")
     user_id: str = Field(..., description="User identifier")
-    feedback_text: str = Field(...,
-                               description="Feedback text provided by user")
-    rating: Optional[int] = Field(
-        None, ge=1, le=5, description="Rating given by user (1-5)")
-    created_at: datetime = Field(...,
-                                 description="Timestamp when feedback was submitted")
+    feedback_text: str = Field(..., description="Feedback text provided by user")
+    rating: Optional[int] = Field(None, ge=1, le=5, description="Rating given by user (1-5)")
+    activity_selection: str = Field(..., description="Activity name for the reviewed session")
+    user_activity_selection_id: int = Field(
+        ..., description="Linked user_activity_selection session ID"
+    )
+    created_at: datetime = Field(..., description="Timestamp when feedback was submitted")
 
 
 class ActivityHistoryItem(BaseModel):

@@ -2,40 +2,34 @@
 Mood Analysis Service Layer
 Handles LLM requests with fallback logic for ollama, groq, and gemini
 """
-
 import json
 import logging
 from typing import Dict, Any, Optional
-
-import httpx
 from sqlalchemy.orm import Session
+import httpx
 
-from app.database.models import MoodAnalysis
-from app.database import repository as db_repository
 from app.llm.config import LLMProvider, llm_config
+from app.database import repository as db_repository
 
 logger = logging.getLogger(__name__)
 
+# Mood analysis prompt
+#technique for the prompt used below
+MOOD_ANALYSIS_PROMPT = """Analyze the mood and emotional state from the following text.
+Respond ONLY with valid JSON (no markdown, no extra text) in this exact format:
+{{
+    "mood_analysed": "the detected mood (e.g., happy, sad, angry, anxious, neutral, etc.)",
+    "reason_for_mood": "a brief explanation of why this mood was detected based on the text"
+}}
 
-MOOD_ANALYSIS_PROMPT = """
-Analyze the mood and emotional state from the following text.
-
-Respond ONLY with valid JSON (no markdown, no extra text)
-in this exact format:
-
-{
-    "mood_analysed": "happy",
-    "reason_for_mood": "brief explanation"
-}
-
-Text to analyze: {text}
-"""
+Text to analyze: {text}"""
 
 
 class MoodAnalyzerService:
     """
-    Service for mood analysis using multiple LLM providers
-    with fallback support.
+    Service for analyzing mood using LLM with fallback support
+    Focuses on: LLM request, response validation, and processing
+    Database operations delegated to database layer
     """
 
     def __init__(self, db: Session):
@@ -43,80 +37,54 @@ class MoodAnalyzerService:
         self.primary_provider = llm_config.get_primary_provider()
         self.fallback_provider = llm_config.get_fallback_provider()
 
-    async def analyze_mood(
-        self,
-        user_id: str,
-        text: str,
-    ) -> Dict[str, Any]:
+    async def analyze_mood(self, user_id: str, text: str) -> Dict[str, Any]:
         """
-        Analyze mood using configured LLM providers.
+        Analyze mood from text using LLM with fallback support
 
         Args:
             user_id: Unique user identifier
-            text: User text input
+            text: Text to analyze
 
         Returns:
-            Mood analysis response dictionary
+            Dictionary containing mood_analysed, reason_for_mood, and metadata
         """
+        logger.info("Starting mood analysis workflow")
 
-        logger.info(
-            "Starting mood analysis for user: %s",
-            user_id,
-        )
+        # Try primary provider first
+        result = await self._try_llm_request(self.primary_provider, text)
 
-        result = await self._try_llm_request(
-            self.primary_provider,
-            text,
-        )
-
+        # If primary fails, try fallback
         if result is None:
             logger.warning(
-                "Primary provider failed. Trying fallback provider."
-            )
-
-            result = await self._try_llm_request(
+                "Primary provider failed (%s). Trying fallback (%s).",
+                self.primary_provider,
                 self.fallback_provider,
-                text,
             )
+            result = await self._try_llm_request(self.fallback_provider, text)
 
+        # If both fail, return default/fallback response
         if result is None:
-            logger.error(
-                "All providers failed. Using default response."
-            )
-
+            logger.error("Both primary and fallback providers failed. Returning default response.")
             result = self._get_default_response()
             provider_used = "default"
-
         else:
-            provider_used = result.get(
-                "provider_used",
-                "unknown",
-            )
+            provider_used = result.get("provider_used", "unknown")
 
+        # Validate result
         if not self._is_valid_response(result):
-            logger.warning(
-                "Invalid response detected. Using default response."
-            )
-
+            logger.warning("Response validation failed. Using default response.")
             result = self._get_default_response()
             provider_used = "default"
 
-        mood_record = self._store_mood_analysis(
+        # Store mood analysis data in the mood_analysis table
+        mood_record = db_repository.save_mood_analysis(
+            db=self.db,
             user_id=user_id,
             input_text=text,
-            mood_analysed=result.get(
-                "mood_analysed",
-                "unknown",
-            ),
-            reason_for_mood=result.get(
-                "reason_for_mood",
-                "Unable to analyze",
-            ),
-            confidence_score=result.get(
-                "confidence_score",
-                0.0,
-            ),
-            llm_provider=provider_used,
+            mood_analysed=result.get("mood_analysed", "unknown"),
+            reason_for_mood=result.get("reason_for_mood", "Unable to analyze"),
+            confidence_score=result.get("confidence_score"),
+            llm_provider=provider_used
         )
 
         return {
@@ -124,168 +92,194 @@ class MoodAnalyzerService:
             "reason_for_mood": result.get("reason_for_mood"),
             "confidence_score": result.get("confidence_score"),
             "llm_provider": provider_used,
-            "database_id": (
-                mood_record.id if mood_record else None
-            ),
+            "database_id": mood_record.id if mood_record else None
         }
 
-    async def _try_llm_request(
-        self,
-        provider: LLMProvider,
-        text: str,
-    ) -> Optional[Dict[str, Any]]:
+    async def _try_llm_request(self, provider: LLMProvider, text: str) -> Optional[Dict[str, Any]]:
         """
-        Attempt request using selected provider.
-        """
+        Attempt LLM request with specific provider
 
+        Args:
+            provider: LLM provider to use
+            text: Text to analyze
+
+        Returns:
+            Dictionary with mood analysis or None if failed
+        """
         try:
             if provider == LLMProvider.OLLAMA:
                 return await self._call_ollama(text)
-
-            if provider == LLMProvider.GROQ:
+            elif provider == LLMProvider.GROQ:
                 return await self._call_groq(text)
-
-            if provider == LLMProvider.GEMINI:
+            elif provider == LLMProvider.GEMINI:
                 return await self._call_gemini(text)
-
-            logger.error(
-                "Unknown provider: %s",
-                provider,
-            )
-
+            else:
+                logger.error(f"Unknown provider: {provider}")
+                return None
+        except Exception:
+            logger.exception("Error calling provider %s", provider)
             return None
 
-        except Exception as exc:
-            logger.error(
-                "Provider request failed: %s",
-                str(exc),
-            )
-
-            return None
-
-    async def _call_ollama(
-        self,
-        text: str,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Call Ollama API.
-        """
-
+    async def _call_ollama(self, text: str) -> Optional[Dict[str, Any]]:
+        """Call Ollama API for mood analysis"""
         try:
             config = llm_config.ollama
+            prompt = MOOD_ANALYSIS_PROMPT.format(text=text)
 
-            prompt = MOOD_ANALYSIS_PROMPT.format(
-                text=text,
-            )
-
-            async with httpx.AsyncClient(
-                timeout=config.timeout
-            ) as client:
-
+            async with httpx.AsyncClient(timeout=config.timeout) as client:
                 response = await client.post(
                     f"{config.base_url}/chat/completions",
                     json={
-                        "model": config.model,
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": prompt,
-                            }
-                        ],
-                        "stream": False,
-                    },
+                    "model": config.model,   # e.g. "llama3.1:8b"
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "stream": False
+                },
+                    timeout=config.timeout
                 )
 
-            if response.status_code != 200:
-                logger.error(
-                    "Ollama API failed: %s",
-                    response.status_code,
-                )
+                if response.status_code == 200:
+                    data = response.json()
+                    response_text = data["choices"][0]["message"]["content"]
 
+                    # Parse JSON response
+                    parsed = self._parse_llm_response(response_text)
+                    if parsed:
+                        parsed["provider_used"] = LLMProvider.OLLAMA.value
+                        parsed["confidence_score"] = 0.85  # Default confidence for ollama
+                        return parsed
+
+                logger.error(f"Ollama API error: {response.status_code}")
                 return None
 
-            data = response.json()
+        except Exception:
+            logger.exception("Ollama request failed")
+            return None
 
-            response_text = (
-                data["choices"][0]["message"]["content"]
-            )
+    async def _call_groq(self, text: str) -> Optional[Dict[str, Any]]:
+        """Call Groq API for mood analysis"""
+        try:
+            config = llm_config.groq
 
-            parsed = self._parse_llm_response(
-                response_text
-            )
+            if not config.api_key:
+                logger.error("Groq API key not configured")
+                return None
 
-            if parsed:
-                parsed["provider_used"] = (
-                    LLMProvider.OLLAMA.value
+            prompt = MOOD_ANALYSIS_PROMPT.format(text=text)
+
+            async with httpx.AsyncClient(timeout=config.timeout) as client:
+                response = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {config.api_key}"},
+                    json={
+                        "model": config.model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.3,
+                    },
+                    timeout=config.timeout
                 )
 
-                parsed["confidence_score"] = 0.85
+                if response.status_code == 200:
+                    data = response.json()
+                    response_text = data["choices"][0]["message"]["content"]
 
-                return parsed
+                    # Parse JSON response
+                    parsed = self._parse_llm_response(response_text)
+                    if parsed:
+                        parsed["provider_used"] = LLMProvider.GROQ.value
+                        parsed["confidence_score"] = 0.90  # Default confidence for groq
+                        return parsed
 
+                logger.error(f"Groq API error: "f"{response.status_code} - {response.text}")
+                return None
+
+        except Exception:
+            logger.exception("Groq request failed")
             return None
 
-        except Exception as exc:
-            logger.error(
-                "Ollama request error: %s",
-                str(exc),
-            )
-
-            return None
-
-    async def _call_groq(
-        self,
-        text: str,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Call Groq API.
-        """
-
-        return None
-
-    async def _call_gemini(
-        self,
-        text: str,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Call Gemini API.
-        """
-
-        return None
-
-    def _parse_llm_response(
-        self,
-        response_text: str,
-    ) -> Optional[Dict[str, str]]:
-        """
-        Parse LLM JSON response.
-        """
-
+    async def _call_gemini(self, text: str) -> Optional[Dict[str, Any]]:
+        """Call Google Gemini API for mood analysis"""
         try:
+            config = llm_config.gemini
+
+            if not config.api_key:
+                logger.error("Gemini API key not configured")
+                return None
+
+            prompt = MOOD_ANALYSIS_PROMPT.format(text=text)
+
+            async with httpx.AsyncClient(timeout=config.timeout) as client:
+                response = await client.post(
+                    f"{config.base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {config.api_key}",
+                    "Content-Type": "application/json"},
+                    json={
+                    "model": config.model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.3,
+                },
+                    timeout=config.timeout
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    response_text = data["choices"][0]["message"]["content"]
+
+                    # Parse JSON response
+                    parsed = self._parse_llm_response(response_text)
+                    if parsed:
+                        parsed["provider_used"] = LLMProvider.GEMINI.value
+                        parsed["confidence_score"] = 0.92  # Default confidence for gemini
+                        return parsed
+
+                logger.error(f"Gemini API error: "f"{response.status_code} - {response.text}")
+                return None
+
+        except Exception:
+            logger.exception("Gemini request failed")
+            return None
+
+    def _parse_llm_response(self,response_text: str) -> Optional[Dict[str, str]]:
+        """Parse and validate LLM JSON response """
+        try:
+
+            logger.debug("Received LLM response payload")
+
             response_text = response_text.strip()
 
+            # Remove markdown code fences
             response_text = response_text.replace(
-                "json",
-                "",
+                "```json",
+                ""
             )
 
             response_text = response_text.replace(
-                "",
-                "",
+                "```",
+                ""
             )
 
             response_text = response_text.strip()
 
+            # Parse JSON
             parsed = json.loads(response_text)
 
+            # Validate required fields
             mood = parsed.get("mood_analysed")
             reason = parsed.get("reason_for_mood")
 
             if not mood or not reason:
                 logger.warning(
-                    "Missing required fields."
+                    f"Missing required fields in response: {parsed}"
                 )
-
                 return None
 
             return {
@@ -293,96 +287,47 @@ class MoodAnalyzerService:
                 "reason_for_mood": str(reason).strip(),
             }
 
-        except json.JSONDecodeError as exc:
-            logger.error(
-                "JSON parsing failed: %s",
-                str(exc),
+        except json.JSONDecodeError as e:
+
+            logger.warning(
+                f"JSON parsing failed: {str(e)}"
+            )
+
+            logger.warning(
+                "Invalid JSON response received from provider"
             )
 
             return None
 
-        except Exception as exc:
-            logger.error(
-                "Unexpected parsing error: %s",
-                str(exc),
-            )
+        except Exception:
+            logger.exception("Unexpected parsing error while handling mood response")
 
             return None
 
-    def _store_mood_analysis(
-        self,
-        user_id: str,
-        input_text: str,
-        mood_analysed: str,
-        reason_for_mood: str,
-        confidence_score: float,
-        llm_provider: str,
-    ):
-        """
-        Store mood analysis in database.
-        """
 
-        return db_repository.save_mood_analysis(
-            db=self.db,
-            user_id=user_id,
-            input_text=input_text,
-            mood_analysed=mood_analysed,
-            reason_for_mood=reason_for_mood,
-            confidence_score=confidence_score,
-            llm_provider=llm_provider,
-        )
-
-    def get_mood_history(
-        self,
-        user_id: str,
-        limit: int = 10,
-    ):
+    def _get_default_response(self) -> Dict[str, Any]:
         """
-        Retrieve mood history for user.
-        """
+        Return default response when all LLM providers fail
 
-        return (
-            self.db.query(MoodAnalysis)
-            .filter(
-                MoodAnalysis.user_id == user_id
-            )
-            .order_by(
-                MoodAnalysis.id.desc()
-            )
-            .limit(limit)
-            .all()
-        )
-
-    def _get_default_response(
-        self,
-    ) -> Dict[str, Any]:
+        Returns:
+            Default mood analysis response
         """
-        Default fallback response.
-        """
-
         return {
             "mood_analysed": "neutral",
-            "reason_for_mood": (
-                "Unable to analyze mood."
-            ),
+            "reason_for_mood": "Unable to analyze mood due to service unavailability. Please try again later.",
             "confidence_score": 0.0,
-            "provider_used": "default",
+            "provider_used": "default"
         }
 
-    def _is_valid_response(
-        self,
-        response: Dict[str, Any],
-    ) -> bool:
+    def _is_valid_response(self, response: Dict[str, Any]) -> bool:
         """
-        Validate response structure.
+        Validate LLM response has required fields
+
+        Args:
+            response: Response dictionary to validate
+
+        Returns:
+            True if valid, False otherwise
         """
-
-        required_fields = [
-            "mood_analysed",
-            "reason_for_mood",
-        ]
-
-        return all(
-            field in response and response[field]
-            for field in required_fields
-        )
+        required_fields = ["mood_analysed", "reason_for_mood"]
+        return all(field in response and response[field] for field in required_fields)

@@ -50,12 +50,11 @@ def save_mood_analysis(
         db.commit()
         db.refresh(mood_record)
 
-        logger.info(
-            f"Mood analysis saved with ID: {mood_record.id} for user: {user_id}")
+        logger.info("Mood analysis saved with ID=%s", mood_record.id)
         return mood_record
 
-    except Exception as e:
-        logger.error(f"Failed to save mood analysis: {str(e)}")
+    except Exception:
+        logger.exception("Failed to save mood analysis")
         db.rollback()
         return None
 
@@ -100,13 +99,27 @@ def save_user_activity_selection(
         db.commit()
         db.refresh(record)
 
-        logger.info(
-            f"User activity selection saved with ID: {record.id} for user: {user_id}")
+        logger.info("User activity selection saved with ID=%s", record.id)
         return record
 
-    except Exception as e:
-        logger.error(f"Failed to save user activity selection: {str(e)}")
+    except Exception:
+        logger.exception("Failed to save user activity selection")
         db.rollback()
+        return None
+
+
+def get_user_activity_selection_by_id(
+    db: Session,
+    selection_id: int,
+) -> Optional[UserActivitySelection]:
+    try:
+        return (
+            db.query(UserActivitySelection)
+            .filter(UserActivitySelection.id == selection_id)
+            .first()
+        )
+    except Exception:
+        logger.exception("Failed to fetch user activity selection id=%s", selection_id)
         return None
 
 
@@ -114,6 +127,8 @@ def save_feedback(
     db: Session,
     user_id: str,
     feedback_text: str,
+    activity_selection: str,
+    user_activity_selection_id: int,
     rating: Optional[int] = None,
 ) -> Optional[UserFeedback]:
     """
@@ -123,21 +138,69 @@ def save_feedback(
         feedback = UserFeedback(
             user_id=user_id,
             feedback_text=feedback_text,
-            rating=rating
+            rating=rating,
+            activity_selection=activity_selection,
+            user_activity_selection_id=user_activity_selection_id,
         )
 
         db.add(feedback)
         db.commit()
         db.refresh(feedback)
 
-        logger.info(
-            f"User feedback saved with ID: {feedback.id} for user: {user_id}")
+        logger.info("User feedback saved with ID=%s", feedback.id)
         return feedback
 
-    except Exception as e:
-        logger.error(f"Failed to save user feedback: {str(e)}")
+    except Exception:
+        logger.exception("Failed to save user feedback")
         db.rollback()
         return None
+
+
+# ============================================================================
+# Feedback-driven personalization helpers
+# ============================================================================
+
+def get_recent_feedback_for_prompt(
+    db: Session,
+    user_id: str,
+    limit: int = 5,
+) -> List[Dict[str, Any]]:
+    """
+    Return a compact list of the user's most recent feedback entries joined
+    with the activity they referred to (if any). Used to personalize future
+    session generation.
+    """
+    try:
+        rows = (
+            db.query(
+                UserFeedback.rating,
+                UserFeedback.feedback_text,
+                UserFeedback.created_at,
+                UserActivitySelection.activity_name,
+                UserActivitySelection.ai_session_title,
+            )
+            .join(
+                UserActivitySelection,
+                UserFeedback.user_activity_selection_id == UserActivitySelection.id,
+            )
+            .filter(UserFeedback.user_id == user_id)
+            .order_by(UserFeedback.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        return [
+            {
+                "rating": row.rating,
+                "feedback_text": row.feedback_text,
+                "activity_name": row.activity_name,
+                "session_title": row.ai_session_title,
+            }
+            for row in rows
+        ]
+    except Exception:
+        logger.exception("Failed to fetch recent feedback for personalization")
+        return []
 
 
 # ============================================================================
@@ -169,6 +232,7 @@ def get_user_moods(
             MoodAnalysis.user_id == user_id
         ).order_by(MoodAnalysis.created_at.desc()).all()
 
+        logger.info("Fetched %s mood records", len(moods))
         logger.info(f"Fetched {len(moods)} mood records for user: {user_id}")
 
         return [
@@ -185,9 +249,8 @@ def get_user_moods(
             for mood in moods
         ]
 
-    except Exception as e:
-        logger.error(
-            f"Failed to fetch mood records for user {user_id}: {str(e)}")
+    except Exception:
+        logger.exception("Failed to fetch mood records")
         raise
 
 
@@ -216,8 +279,7 @@ def get_user_feedback(
             UserFeedback.user_id == user_id
         ).order_by(UserFeedback.created_at.desc()).all()
 
-        logger.info(
-            f"Fetched {len(feedback_list)} feedback records for user: {user_id}")
+        logger.info("Fetched %s feedback records", len(feedback_list))
 
         return [
             {
@@ -225,14 +287,15 @@ def get_user_feedback(
                 "user_id": feedback.user_id,
                 "feedback_text": feedback.feedback_text,
                 "rating": feedback.rating,
+                "activity_selection": feedback.activity_selection,
+                "user_activity_selection_id": feedback.user_activity_selection_id,
                 "created_at": feedback.created_at
             }
             for feedback in feedback_list
         ]
 
-    except Exception as e:
-        logger.error(
-            f"Failed to fetch feedback records for user {user_id}: {str(e)}")
+    except Exception:
+        logger.exception("Failed to fetch feedback records")
         raise
 
 
@@ -261,8 +324,7 @@ def get_user_activities(
             UserActivitySelection.user_id == user_id
         ).order_by(UserActivitySelection.id.desc()).all()
 
-        logger.info(
-            f"Fetched {len(activities)} activity records for user: {user_id}")
+        logger.info("Fetched %s activity records", len(activities))
 
         return [
             {
@@ -278,9 +340,8 @@ def get_user_activities(
             for activity in activities
         ]
 
-    except Exception as e:
-        logger.error(
-            f"Failed to fetch activity records for user {user_id}: {str(e)}")
+    except Exception:
+        logger.exception("Failed to fetch activity records")
         raise
 
 
@@ -321,8 +382,7 @@ def get_user_moods_in_period(
         ).order_by(MoodAnalysis.created_at.asc()).all()
 
         logger.info(
-            f"Fetched {len(moods)} mood records for user {user_id} "
-            f"in period {from_date} to {to_date}"
+            "Fetched %s mood records in requested period", len(moods)
         )
 
         return [
@@ -340,11 +400,8 @@ def get_user_moods_in_period(
         ]
 
     except ValueError as e:
-        logger.error(f"Invalid date range: {str(e)}")
+        logger.warning(f"Invalid date range: {str(e)}")
         raise
-    except Exception as e:
-        logger.error(
-            f"Failed to fetch mood records for user {user_id} in period "
-            f"{from_date} to {to_date}: {str(e)}"
-        )
+    except Exception:
+        logger.exception("Failed to fetch mood records in period")
         raise

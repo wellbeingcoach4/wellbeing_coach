@@ -21,16 +21,3 @@ from app.database.connection import (
     close_db,
     DATABASE_URL,
 )
-
-_all_ = [
-    "Base",
-    "MoodAnalysis",
-    "UserFeedback",
-    "UserActivitySelection",
-    "engine",
-    "SessionLocal",
-    "get_db",
-    "init_db",
-    "close_db",
-    "DATABASE_URL",
-]

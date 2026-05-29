@@ -72,10 +72,9 @@ def get_user_history(
     try:
         # Validate user_id format
         if not user_id or len(user_id) < 1:
-            raise HTTPException(
-                status_code=400, detail="Invalid user_id format")
+            raise HTTPException(status_code=400, detail="Invalid user_id format")
 
-        logger.info(f"Fetching history for user: {user_id}")
+        logger.info("Fetching user history")
 
         service = UserHistoryService(db)
         history_data = service.get_user_history(user_id)
@@ -104,7 +103,7 @@ def get_user_history(
         )
 
         logger.info(
-            f"Successfully fetched history for user {user_id}: "
+            "Successfully fetched history: "
             f"{response.total_moods} moods, {response.total_feedback} feedback, "
             f"{response.total_activities} activities"
         )
@@ -112,12 +111,11 @@ def get_user_history(
         return response
 
     except ValueError as e:
-        logger.error(f"Validation error for user {user_id}: {str(e)}")
+        logger.warning("Validation error while fetching user history: %s", str(e))
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error fetching history for user {user_id}: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch user history: {str(e)}")
+        logger.exception("Unhandled exception while fetching user history")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user history: {str(e)}")
 
 
 def _normalize_periodic_date(
@@ -207,9 +205,7 @@ async def get_periodic_mood(
                 detail="from_date must be before or equal to to_date"
             )
 
-        logger.info(
-            f"Fetching periodic mood for user {user_id} from {from_date_dt} to {to_date_dt}"
-        )
+        logger.info("Fetching periodic mood history")
 
         service = UserHistoryService(db)
         mood_data = await service.get_periodic_mood(user_id, from_date_dt, to_date_dt)
@@ -234,21 +230,19 @@ async def get_periodic_mood(
         )
 
         logger.info(
-            f"Successfully fetched periodic mood for user {user_id}: "
+            "Successfully fetched periodic mood history: "
             f"{len(moods_in_period)} moods in period"
         )
 
         return response
 
     except ValueError as e:
-        logger.error(f"Validation error for user {user_id}: {str(e)}")
+        logger.warning("Validation error while fetching periodic mood: %s", str(e))
         raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            f"Error fetching periodic mood for user {user_id} ({from_date} to {to_date}): {str(e)}"
-        )
+        logger.exception("Unhandled exception while fetching periodic mood history")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch periodic mood analysis: {str(e)}"

@@ -4,10 +4,13 @@ Supports: Ollama, Groq, and Gemini
 """
 
 import os
+import logging
 from enum import Enum
 from typing import Any
 from dotenv import load_dotenv
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env
 load_dotenv()
@@ -20,6 +23,7 @@ for _k in list(os.environ.keys()):
         try:
             del os.environ[_k]
         except Exception:
+            logger.debug("Failed to normalize environment key with whitespace")
             pass
 
 
@@ -72,6 +76,7 @@ class LLMConfig:
     """
 
     def __init__(self):
+        logger.info("Initializing LLM configuration")
 
         # Providers (tolerant to slightly different env var names and spacing)
         self.provider = _get_env("LLM_PROVIDER", default="ollama").lower()
@@ -110,6 +115,7 @@ class LLMConfig:
         try:
             return LLMProvider(self.provider)
         except ValueError:
+            logger.warning("Invalid primary provider configured. Falling back to ollama.")
             return LLMProvider.OLLAMA
 
     def get_fallback_provider(self) -> LLMProvider:
@@ -118,6 +124,7 @@ class LLMConfig:
         try:
             return LLMProvider(self.fallback_provider)
         except ValueError:
+            logger.warning("Invalid fallback provider configured. Falling back to groq.")
             return LLMProvider.GROQ
 
     def get_config_for_provider(

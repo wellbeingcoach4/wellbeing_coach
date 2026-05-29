@@ -77,21 +77,23 @@ class UserHistoryService:
             Exception: If database query fails
         """
         try:
-            logger.info(f"Fetching history for user: {user_id}")
+
+            logger.info("Fetching user history from repository")
+
 
             # Fetch all moods for the user
             mood_history = db_repository.get_user_moods(self.db, user_id)
 
             # Fetch all feedback for the user
-            feedback_history = db_repository.get_user_feedback(
-                self.db, user_id)
+
+            feedback_history = db_repository.get_user_feedback(self.db, user_id)
 
             # Fetch all activities for the user
-            activity_history = db_repository.get_user_activities(
-                self.db, user_id)
+            activity_history = db_repository.get_user_activities(self.db, user_id)
+
 
             logger.info(
-                f"Successfully fetched history for user {user_id}: "
+                "Successfully fetched history: "
                 f"{len(mood_history)} moods, {len(feedback_history)} feedback, "
                 f"{len(activity_history)} activities"
             )
@@ -106,9 +108,9 @@ class UserHistoryService:
                 "total_activities": len(activity_history)
             }
 
-        except Exception as e:
-            logger.error(
-                f"Error fetching history for user {user_id}: {str(e)}")
+        except Exception:
+            logger.exception("Error fetching history from repository")
+
             raise
 
     async def get_periodic_mood(
@@ -145,12 +147,10 @@ class UserHistoryService:
         try:
             # Validate date range
             if from_date > to_date:
-                raise ValueError(
-                    "from_date must be before or equal to to_date")
+                raise ValueError("from_date must be before or equal to to_date")
 
-            logger.info(
-                f"Fetching periodic mood for user {user_id} from {from_date} to {to_date}"
-            )
+            logger.info("Fetching periodic mood data from repository")
+
 
             # Fetch moods within the date range
             moods_in_period = db_repository.get_user_moods_in_period(
@@ -180,16 +180,15 @@ class UserHistoryService:
             }
 
             logger.info(
-                f"Successfully fetched periodic mood for user {user_id}: "
+                "Successfully fetched periodic mood: "
                 f"{len(moods_in_period)} moods found in period"
             )
 
             return result
 
-        except Exception as e:
-            logger.error(
-                f"Error fetching periodic mood for user {user_id} ({from_date} to {to_date}): {str(e)}"
-            )
+        except Exception:
+            logger.exception("Error while processing periodic mood data")
+
             raise
 
     def _calculate_mood_statistics(self, moods: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -231,10 +230,9 @@ class UserHistoryService:
 
         # Calculate averages and find extremes
         average_confidence = total_confidence / len(moods) if moods else 0
-        most_common_mood = max(
-            mood_distribution, key=mood_distribution.get) if mood_distribution else None
-        least_common_mood = min(
-            mood_distribution, key=mood_distribution.get) if mood_distribution else None
+        most_common_mood = max(mood_distribution, key=mood_distribution.get) if mood_distribution else None
+        least_common_mood = min(mood_distribution, key=mood_distribution.get) if mood_distribution else None
+
 
         return {
             "total_moods": len(moods),
@@ -271,8 +269,8 @@ class UserHistoryService:
         # Format mood data for LLM
         formatted_mood_data = self._format_mood_data_for_llm(mood_data)
 
-        prompt = PERIODIC_MOOD_ANALYSIS_PROMPT.format(
-            mood_data=formatted_mood_data)
+        prompt = PERIODIC_MOOD_ANALYSIS_PROMPT.format(mood_data=formatted_mood_data)
+
 
         # Try with primary provider
         try:
@@ -413,8 +411,8 @@ class UserHistoryService:
 
                 return result.get("content", "")
 
-        except Exception as e:
-            logger.error(f"LLM call failed: {str(e)}")
+        except Exception:
+            logger.exception("LLM call failed for periodic mood analysis")
             raise
 
     def _parse_llm_response(self, response: str) -> Dict[str, str]:
@@ -448,8 +446,8 @@ class UserHistoryService:
 
         except json.JSONDecodeError as e:
 
-            logger.error(f"JSON parsing failed: {str(e)}")
-            logger.error(f"Invalid JSON response: {response}")
+            logger.warning(f"JSON parsing failed: {str(e)}")
+            logger.warning("Invalid JSON response from periodic mood provider")
 
             return {
                 "period_analysis": "Unable to generate analysis.",
@@ -457,9 +455,8 @@ class UserHistoryService:
                 "llm_provider": "unknown"
             }
 
-        except Exception as e:
-
-            logger.error(f"Unexpected parsing error: {str(e)}")
+        except Exception:
+            logger.exception("Unexpected parsing error in periodic mood response")
 
             return {
                 "period_analysis": "Unable to generate analysis.",

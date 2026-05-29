@@ -35,6 +35,7 @@ async def analyze_mood(
     Returns:
         MoodResponse with mood analysis results
     """
+    logger.info("Analyzing mood request received")
     try:
         service = MoodAnalyzerService(db=db)
         result = await service.analyze_mood(
@@ -43,6 +44,6 @@ async def analyze_mood(
         )
 
         return MoodResponse(**result)
-    except Exception as e:
-        logger.error(f"Error analyzing mood: {str(e)}")
+    except Exception:
+        logger.exception("Unhandled exception during mood analysis")
         raise
