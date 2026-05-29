@@ -5,13 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.136.3",
-    "openai>=2.38.0",
-    "psycopg2>=2.9.12",
-    "pylint>=4.0.5",
-    "pytest>=9.0.3",
-    "pytest-cov>=7.1.0",
-    "python-dotenv>=1.2.2",
-    "sqlalchemy>=2.0.50",
-    "uvicorn>=0.48.0",
+    "fastapi>=0.136.3",     # Build RESTFul API's, supports routing, request validation, automatic swagger docs, async programming
+    "openai>=2.38.0",       # Python SDK for accessing OpnAI models
+    "psycopg2>=2.9.12",     # PostgreSQL database driver for Python, allows Python code to connect to PostgreSQL databases.
+    "pylint>=4.0.5",        # Checks coding style, unused variables, bad practices, possible bugs
+    "pytest>=9.0.3",        # Framework for writin and running unit and integration tests
+    "pytest-cov>=7.1.0",    # Measures test coverage
+    "python-dotenv>=1.2.2", # Loads environment variables from .env file.
+    "sqlalchemy>=2.0.50",   # ORM(Object Relational Mapper) lets to work with database tables as Python classes instead of raw SQL.
+    "uvicorn>=0.48.0",      # Runs FastAPI applications. ASGI(Asynchronous Server Gateway Interface) web server optimized for async Python.
 ]
