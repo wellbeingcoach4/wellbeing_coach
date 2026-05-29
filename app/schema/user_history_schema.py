@@ -28,6 +28,10 @@ class FeedbackHistoryItem(BaseModel):
     user_id: str = Field(..., description="User identifier")
     feedback_text: str = Field(..., description="Feedback text provided by user")
     rating: Optional[int] = Field(None, ge=1, le=5, description="Rating given by user (1-5)")
+    activity_selection: str = Field(..., description="Activity name for the reviewed session")
+    user_activity_selection_id: int = Field(
+        ..., description="Linked user_activity_selection session ID"
+    )
     created_at: datetime = Field(..., description="Timestamp when feedback was submitted")
 
 

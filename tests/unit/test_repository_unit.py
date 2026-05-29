@@ -76,6 +76,8 @@ def test_save_feedback_returns_none_and_rolls_back_on_failure():
         db=db,
         user_id="u1",
         feedback_text="bad",
+        activity_selection="Meditation",
+        user_activity_selection_id=1,
         rating=1,
     )
     assert result is None

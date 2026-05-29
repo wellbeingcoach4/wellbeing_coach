@@ -16,20 +16,28 @@ class FeedbackService:
         self,
         user_id: str,
         feedback_text: str,
+        activity_selection: str,
+        user_activity_selection_id: int,
         rating: Optional[int] = None,
-        activity_selection_id: Optional[int] = None,
     ):
+        selection = repository.get_user_activity_selection_by_id(
+            self.db, user_activity_selection_id
+        )
+        if not selection or selection.user_id != user_id:
+            raise ValueError("Invalid user_activity_selection_id for user")
+
         logger.info(
-            "Saving user feedback rating_provided=%s activity_linked=%s",
+            "Saving user feedback rating_provided=%s user_activity_selection_id=%s",
             rating is not None,
-            activity_selection_id is not None,
+            user_activity_selection_id,
         )
         saved = repository.save_feedback(
             db=self.db,
             user_id=user_id,
             feedback_text=feedback_text,
             rating=rating,
-            activity_selection_id=activity_selection_id,
+            activity_selection=activity_selection.strip(),
+            user_activity_selection_id=user_activity_selection_id,
         )
 
         if not saved:

@@ -107,12 +107,28 @@ def save_user_activity_selection(
         return None
 
 
+def get_user_activity_selection_by_id(
+    db: Session,
+    selection_id: int,
+) -> Optional[UserActivitySelection]:
+    try:
+        return (
+            db.query(UserActivitySelection)
+            .filter(UserActivitySelection.id == selection_id)
+            .first()
+        )
+    except Exception:
+        logger.exception("Failed to fetch user activity selection id=%s", selection_id)
+        return None
+
+
 def save_feedback(
     db: Session,
     user_id: str,
     feedback_text: str,
+    activity_selection: str,
+    user_activity_selection_id: int,
     rating: Optional[int] = None,
-    activity_selection_id: Optional[int] = None,
 ) -> Optional[UserFeedback]:
     """
     Save user feedback to database
@@ -122,7 +138,8 @@ def save_feedback(
             user_id=user_id,
             feedback_text=feedback_text,
             rating=rating,
-            activity_selection_id=activity_selection_id,
+            activity_selection=activity_selection,
+            user_activity_selection_id=user_activity_selection_id,
         )
 
         db.add(feedback)
@@ -161,9 +178,9 @@ def get_recent_feedback_for_prompt(
                 UserActivitySelection.activity_name,
                 UserActivitySelection.ai_session_title,
             )
-            .outerjoin(
+            .join(
                 UserActivitySelection,
-                UserFeedback.activity_selection_id == UserActivitySelection.id,
+                UserFeedback.user_activity_selection_id == UserActivitySelection.id,
             )
             .filter(UserFeedback.user_id == user_id)
             .order_by(UserFeedback.created_at.desc())
@@ -268,6 +285,8 @@ def get_user_feedback(
                 "user_id": feedback.user_id,
                 "feedback_text": feedback.feedback_text,
                 "rating": feedback.rating,
+                "activity_selection": feedback.activity_selection,
+                "user_activity_selection_id": feedback.user_activity_selection_id,
                 "created_at": feedback.created_at
             }
             for feedback in feedback_list

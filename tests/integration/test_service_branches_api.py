@@ -186,7 +186,7 @@ def test_select_activity_both_providers_fail_uses_default_session(client, monkey
 
 
 def test_select_activity_blank_custom_activity_rejected(client):
-    """activity_id=0 with whitespace-only custom_activity should 400."""
+    """activity_id=0 with whitespace-only custom_activity should be rejected."""
     resp = client.post(
         "/wellbeing/select-activity",
         json={
@@ -196,8 +196,8 @@ def test_select_activity_blank_custom_activity_rejected(client):
             "custom_activity": "   ",
         },
     )
-    assert resp.status_code == 400
-    assert "custom_activity" in resp.json()["detail"]
+    assert resp.status_code == 422
+    assert "session context" in str(resp.json()["detail"]).lower()
 
 
 def test_select_activity_includes_past_feedback_in_prompt(client, monkeypatch):
@@ -234,7 +234,8 @@ def test_select_activity_includes_past_feedback_in_prompt(client, monkeypatch):
             "user_id": "user01",
             "feedback_text": "Loved this calming session",
             "rating": 5,
-            "activity_selection_id": selection_id,
+            "activity_selection": "Meditation",
+            "user_activity_selection_id": selection_id,
         },
     )
     assert fb.status_code == 200

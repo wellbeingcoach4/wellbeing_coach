@@ -2,7 +2,7 @@
 Database models for mood analysis
 """
 from datetime import datetime
-from sqlalchemy import JSON, Column, String, Float, DateTime, Text, Integer
+from sqlalchemy import JSON, Column, String, Float, DateTime, Text, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -67,5 +67,11 @@ class UserFeedback(Base):
     user_id = Column(String(255), index=True, nullable=False)
     feedback_text = Column(Text, nullable=False)
     rating = Column(Integer, nullable=True)
-    activity_selection_id = Column(Integer, index=True, nullable=True)
+    activity_selection = Column(String(255), nullable=False)
+    user_activity_selection_id = Column(
+        Integer,
+        ForeignKey("user_activity_selection.id"),
+        index=True,
+        nullable=False,
+    )
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

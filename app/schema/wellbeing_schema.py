@@ -33,6 +33,16 @@ class ActivitySelectionRequest(BaseModel):
     custom_activity: Optional[str] = Field(None,min_length=3,max_length=255,
     description="Custom activity provided by user if not selecting from suggestions")
 
+    @field_validator("custom_activity", mode="before")
+    @classmethod
+    def _normalize_custom_activity(cls, value):
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            return value
+        cleaned = value.strip()
+        return cleaned if cleaned else None
+
     @field_validator("user_reason_for_mood", mode="before")
     @classmethod
     def _escape_double_quotes(cls, value):
@@ -56,9 +66,15 @@ class ActivitySelectionRequest(BaseModel):
     @model_validator(mode="after")
     def validate_custom_activity_with_zero_id(self):
 
-        if self.activity_id == 0 and not self.custom_activity:
+        if self.custom_activity:
+            if self.activity_id != 0:
+                raise ValueError(
+                    "custom_activity requires activity_id 0"
+                )
+        elif self.activity_id == 0:
             raise ValueError(
-                "activity_id 0 requires custom_activity"
+                "Provide either a predefined activity_id or custom_activity "
+                "so the session context is clear"
             )
 
         return self

@@ -13,25 +13,28 @@ def _seed_user_data(client, mock_chat_completion):
         json={"user_id": "user01", "text": "Great day"},
     )
 
+    mock_chat_completion(
+        '{"session_title":"Focus Session","session_steps":["Plan","Execute"],'
+        '"estimated_duration":"15 minutes","mood_addressed":"Productivity"}'
+    )
+    activity_response = client.post(
+        "/wellbeing/select-activity",
+        json={
+            "user_id": "user01",
+            "activity_id": 2,
+            "available_time_minutes": 15,
+        },
+    )
+    selection_id = activity_response.json()["database_id"]
+
     client.post(
         "/feedback/",
         json={
             "user_id": "user01",
             "feedback_text": "Helpful",
             "rating": 4,
-        },
-    )
-
-    mock_chat_completion(
-        '{"session_title":"Focus Session","session_steps":["Plan","Execute"],'
-        '"estimated_duration":"15 minutes","mood_addressed":"Productivity"}'
-    )
-    client.post(
-        "/wellbeing/select-activity",
-        json={
-            "user_id": "user01",
-            "activity_id": 2,
-            "available_time_minutes": 15,
+            "activity_selection": "Breathing Exercise",
+            "user_activity_selection_id": selection_id,
         },
     )
 
