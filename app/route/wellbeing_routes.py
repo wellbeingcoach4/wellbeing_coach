@@ -19,6 +19,7 @@ router = APIRouter(
     tags=["Wellbeing"]
 )
 
+
 @router.get(
     "/activities",
     response_model=WellbeingActivitiesListResponse
@@ -56,7 +57,8 @@ async def select_activity(
             activity_id=request.activity_id,
             available_time_minutes=request.available_time_minutes,
             mood=request.mood,
-            user_reason_for_mood=getattr(request, 'user_reason_for_mood', None),
+            user_reason_for_mood=getattr(
+                request, 'user_reason_for_mood', None),
             custom_activity=getattr(request, 'custom_activity', None)
         )
 
@@ -66,6 +68,8 @@ async def select_activity(
             status_code=400,
             detail=str(e)
         )
+
     except Exception:
         logger.exception("Unhandled exception in wellbeing activity selection")
         raise
+

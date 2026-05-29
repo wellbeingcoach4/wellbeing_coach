@@ -80,25 +80,31 @@ class LLMConfig:
 
         # Providers (tolerant to slightly different env var names and spacing)
         self.provider = _get_env("LLM_PROVIDER", default="ollama").lower()
-        self.fallback_provider = _get_env("LLM_FALLBACK_PROVIDER", default="groq").lower()
+        self.fallback_provider = _get_env(
+            "LLM_FALLBACK_PROVIDER", default="groq").lower()
 
         # Provider Configurations (support alternate env names like LOCAL_...)
         self.ollama = OllamaConfig(
-            base_url=_get_env("LOCAL_BASE_URL", "LOCAL_BASE_URL", default="http://localhost:11434"),
-            model=_get_env("LOCAL_MODEL", "LOCAL_MODEL", default="llama3.1:8b"),
+            base_url=_get_env("LOCAL_BASE_URL", "LOCAL_BASE_URL",
+                              default="http://localhost:11434"),
+            model=_get_env("LOCAL_MODEL", "LOCAL_MODEL",
+                           default="llama3.1:8b"),
             timeout=int(_get_env("OLLAMA_TIMEOUT", default="180"))
         )
 
         self.groq = GroqConfig(
             api_key=_get_env("GROQ_API_KEY", "GROQ_APIKEY", default=""),
-            base_url=_get_env("GROQ_BASE_URL", default="https://api.groq.com/openai/v1"),
-            model=_get_env("GROQ_MODEL", "GROQ_MODEL_NAME", default="llama-3.1-8b-instant"),
+            base_url=_get_env(
+                "GROQ_BASE_URL", default="https://api.groq.com/openai/v1"),
+            model=_get_env("GROQ_MODEL", "GROQ_MODEL_NAME",
+                           default="llama-3.1-8b-instant"),
             timeout=int(_get_env("GROQ_TIMEOUT", default="30"))
         )
 
         self.gemini = GeminiConfig(
             api_key=_get_env("GEMINI_API_KEY", default=""),
-            base_url=_get_env("GEMINI_BASE_URL", default="https://generativelanguage.googleapis.com/v1beta/openai"),
+            base_url=_get_env(
+                "GEMINI_BASE_URL", default="https://generativelanguage.googleapis.com/v1beta/openai"),
             model=_get_env("GEMINI_MODEL", default="gemini-2.5-flash"),
             timeout=int(_get_env("GEMINI_TIMEOUT", default="30"))
         )

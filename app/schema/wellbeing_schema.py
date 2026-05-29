@@ -1,3 +1,11 @@
+"""
+Wellbeing Schema Module.
+
+Defines request and response schemas for wellbeing
+activities, activity selection, and personalized
+wellbeing session operations in the Wellbeing
+Coach application.
+"""
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -18,13 +26,14 @@ class WellbeingActivitiesListResponse(BaseModel):
 
 
 class ActivitySelectionRequest(BaseModel):
-
     user_id: str = Field(...,min_length=1, pattern=r"^[a-zA-Z0-9_-]+$",
     description="Unique identifier for the user")
 
+
     activity_id: int
 
-    available_time_minutes: Optional[int] = Field(None, description="Available time in minutes for the activity")
+    available_time_minutes: Optional[int] = Field(
+        None, description="Available time in minutes for the activity")
 
     mood: Optional[str] = None
 

@@ -4,7 +4,7 @@ Handles all database operations for mood analysis, feedback, activities, and his
 """
 import logging
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlalchemy.orm import Session
 
 from app.database.models import MoodAnalysis, UserActivitySelection, UserFeedback
@@ -58,6 +58,7 @@ def save_mood_analysis(
         db.rollback()
         return None
 
+
 def save_user_activity_selection(
     db,
     user_id,
@@ -75,23 +76,23 @@ def save_user_activity_selection(
 
         record = UserActivitySelection(
 
-        user_id=user_id,
+            user_id=user_id,
 
-        activity_id=activity_id,
+            activity_id=activity_id,
 
-        activity_name=activity_name,
+            activity_name=activity_name,
 
-        available_time_minutes=available_time_minutes,
+            available_time_minutes=available_time_minutes,
 
-        ai_session_title=ai_session_title,
+            ai_session_title=ai_session_title,
 
-        ai_session_steps=ai_session_steps,
+            ai_session_steps=ai_session_steps,
 
-        ai_estimated_duration=ai_estimated_duration,
+            ai_estimated_duration=ai_estimated_duration,
 
-        llm_provider=llm_provider,
-        user_reason_for_mood=user_reason_for_mood,
-        custom_activity=custom_activity
+            llm_provider=llm_provider,
+            user_reason_for_mood=user_reason_for_mood,
+            custom_activity=custom_activity
         )
 
         db.add(record)
@@ -232,6 +233,7 @@ def get_user_moods(
         ).order_by(MoodAnalysis.created_at.desc()).all()
 
         logger.info("Fetched %s mood records", len(moods))
+        logger.info(f"Fetched {len(moods)} mood records for user: {user_id}")
 
         return [
             {
@@ -333,7 +335,7 @@ def get_user_activities(
                 "available_time_minutes": activity.available_time_minutes,
                 "ai_session_title": activity.ai_session_title,
                 "ai_estimated_duration": activity.ai_estimated_duration,
-                "created_at": getattr(activity, 'created_at', datetime.utcnow())
+                "created_at": getattr(activity, 'created_at', datetime.now(UTC))
             }
             for activity in activities
         ]

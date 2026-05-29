@@ -135,8 +135,10 @@ def _normalize_periodic_date(
 @router.get("/{user_id}/mood/periodic", response_model=PeriodicMoodResponse)
 async def get_periodic_mood(
     user_id: str,
-    from_date: Union[date, datetime] = Query(..., description="Start date for mood analysis (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
-    to_date: Union[date, datetime] = Query(..., description="End date for mood analysis (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
+    from_date: Union[date, datetime] = Query(
+        ..., description="Start date for mood analysis (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
+    to_date: Union[date, datetime] = Query(
+        ..., description="End date for mood analysis (ISO format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
     db: Session = Depends(get_db)
 ) -> PeriodicMoodResponse:
     """
@@ -189,7 +191,8 @@ async def get_periodic_mood(
     try:
         # Validate user_id format
         if not user_id or len(user_id) < 1:
-            raise HTTPException(status_code=400, detail="Invalid user_id format")
+            raise HTTPException(
+                status_code=400, detail="Invalid user_id format")
 
         # Normalize date-only input values to the full day range
         from_date_dt = _normalize_periodic_date(from_date)

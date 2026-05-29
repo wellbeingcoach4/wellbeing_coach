@@ -77,16 +77,20 @@ class UserHistoryService:
             Exception: If database query fails
         """
         try:
+
             logger.info("Fetching user history from repository")
+
 
             # Fetch all moods for the user
             mood_history = db_repository.get_user_moods(self.db, user_id)
 
             # Fetch all feedback for the user
+
             feedback_history = db_repository.get_user_feedback(self.db, user_id)
 
             # Fetch all activities for the user
             activity_history = db_repository.get_user_activities(self.db, user_id)
+
 
             logger.info(
                 "Successfully fetched history: "
@@ -106,6 +110,7 @@ class UserHistoryService:
 
         except Exception:
             logger.exception("Error fetching history from repository")
+
             raise
 
     async def get_periodic_mood(
@@ -146,6 +151,7 @@ class UserHistoryService:
 
             logger.info("Fetching periodic mood data from repository")
 
+
             # Fetch moods within the date range
             moods_in_period = db_repository.get_user_moods_in_period(
                 self.db, user_id, from_date, to_date
@@ -170,7 +176,7 @@ class UserHistoryService:
                 "mood_statistics": mood_statistics,
                 "period_analysis": ai_analysis.get("period_analysis", ""),
                 "recommendation": ai_analysis.get("recommendation", ""),
-                "llm_provider": ai_analysis.get("llm_provider","unknown")
+                "llm_provider": ai_analysis.get("llm_provider", "unknown")
             }
 
             logger.info(
@@ -182,6 +188,7 @@ class UserHistoryService:
 
         except Exception:
             logger.exception("Error while processing periodic mood data")
+
             raise
 
     def _calculate_mood_statistics(self, moods: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -217,13 +224,15 @@ class UserHistoryService:
 
         for mood in moods:
             mood_name = mood.get("mood_analysed", "unknown")
-            mood_distribution[mood_name] = mood_distribution.get(mood_name, 0) + 1
+            mood_distribution[mood_name] = mood_distribution.get(
+                mood_name, 0) + 1
             total_confidence += mood.get("confidence_score", 0)
 
         # Calculate averages and find extremes
         average_confidence = total_confidence / len(moods) if moods else 0
         most_common_mood = max(mood_distribution, key=mood_distribution.get) if mood_distribution else None
         least_common_mood = min(mood_distribution, key=mood_distribution.get) if mood_distribution else None
+
 
         return {
             "total_moods": len(moods),
@@ -261,6 +270,7 @@ class UserHistoryService:
         formatted_mood_data = self._format_mood_data_for_llm(mood_data)
 
         prompt = PERIODIC_MOOD_ANALYSIS_PROMPT.format(mood_data=formatted_mood_data)
+
 
         # Try with primary provider
         try:
@@ -379,12 +389,12 @@ class UserHistoryService:
                     response = await client.post(
                         url,
                         headers={"Authorization": f"Bearer {config.api_key}",
-                        "Content-Type": "application/json"},
+                                 "Content-Type": "application/json"},
                         json={
-                        "model": config.model,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.3
-                    }
+                            "model": config.model,
+                            "messages": [{"role": "user", "content": prompt}],
+                            "temperature": 0.3
+                        }
                     )
                 else:
                     raise ValueError(f"Unknown LLM provider: {provider}")
